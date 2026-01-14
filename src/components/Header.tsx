@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 const navLinks = [
   { label: "Home", href: "#home", active: true },
   { label: "Culture", href: "/culture" },
-  { label: "Investors", href: "#investors" },
+  { label: "Investors", href: "/contact" },
   { label: "Blog", href: "#blog" },
-  { label: "Contact", href: "#contact" },
+  { label: "Contact", href: "/contact" },
 ];
 
 const Header = () => {
@@ -18,11 +18,11 @@ const Header = () => {
       <div className="container mx-auto px-6 lg:px-16">
         <div className="flex items-center justify-center lg:justify-between h-16 lg:h-20">
           {/* Logo */}
-          <a href="#home" className="flex items-center lg:mr-auto">
+          <a href="/" className="flex items-center lg:mr-auto">
             <img
               src="/velrona_texted.png"
               alt="Velrona"
-              className="h-6 sm:h-10 lg:h-5 w-auto object-contain"
+              className="h-5 sm:h-10 lg:h-5 w-auto object-contain"
             />
           </a>
 

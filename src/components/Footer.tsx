@@ -6,12 +6,12 @@ const footerLinks = {
     { label: "Ofran", href: "#" },
   ],
   about: [
-    { label: "Culture", href: "#culture" },
-    { label: "Investors", href: "#investors" },
+    { label: "Culture", href: "/culture" },
+    { label: "Investors", href: "/contact" },
     { label: "Blog", href: "#blog" },
   ],
   contact: [
-    { label: "Contact", href: "#contact" },
+    { label: "Contact", href: "/contact" },
   ],
 };
 
@@ -19,8 +19,12 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white py-16 lg:py-20">
-      <div className="container mx-auto px-6 lg:px-16">
+    <>
+      {/* Divider Line */}
+      <div className="border-t border-border"></div>
+      
+      <footer className="bg-white py-16 lg:py-20">
+        <div className="container mx-auto px-6 lg:px-16">
         {/* Main Footer Content */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-16">
           {/* Logo */}
@@ -29,7 +33,7 @@ const Footer = () => {
               <img
                 src="/velrona_texted.png"
                 alt="Velrona"
-                className="h-8 lg:h-10 w-auto object-contain"
+                className="h-5 lg:h-7 w-auto object-contain"
               />
             </a>
           </div>
@@ -104,6 +108,7 @@ const Footer = () => {
         </div>
       </div>
     </footer>
+    </>
   );
 };
 
