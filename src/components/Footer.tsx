@@ -1,15 +1,14 @@
 const footerLinks = {
   businesses: [
-    { label: "OneKit", href: "#" },
+    { label: "Onekit Inc", href: "#" },
     { label: "Ticpin", href: "#" },
     { label: "Caury Farms", href: "#" },
     { label: "Ofran", href: "#" },
   ],
   about: [
     { label: "Culture", href: "#culture" },
-    { label: "Careers", href: "#careers" },
     { label: "Investors", href: "#investors" },
-    { label: "Impact", href: "#impact" },
+    { label: "Blog", href: "#blog" },
   ],
   contact: [
     { label: "Contact", href: "#contact" },
@@ -98,7 +97,7 @@ const Footer = () => {
                 href="/terms-conditions"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Terms
+                Terms & Conditions
               </a>
             </div>
           </div>
