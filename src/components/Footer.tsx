@@ -1,9 +1,9 @@
 const footerLinks = {
   businesses: [
-    { label: "Zomato", href: "#" },
-    { label: "Blinkit", href: "#" },
-    { label: "District", href: "#" },
-    { label: "Hyperpure", href: "#" },
+    { label: "OneKit", href: "#" },
+    { label: "Ticpin", href: "#" },
+    { label: "Caury Farms", href: "#" },
+    { label: "Ofran", href: "#" },
   ],
   about: [
     { label: "Culture", href: "#culture" },
