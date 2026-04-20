@@ -3,7 +3,7 @@ import futuristicCity from "@/assets/futuristic-city.jpg";
 
 const VisionMission = () => {
   return (
-    <section className="py-20 lg:py-32 bg-background">
+    <section className="py-20 lg:py-32 bg-background mt-[-150px]">
       <div className="container mx-auto px-6 lg:px-16">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Text Content */}

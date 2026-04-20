@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
   { label: "Home", href: "#home", active: true },
-  { label: "Culture", href: "/culture" },
-  { label: "Investors", href: "/contact" },
-  { label: "Blog", href: "#blog" },
-  { label: "Contact", href: "/contact" },
+  { label: "Ventures", href: "/ventures" },
+  { label: "Community", href: "/community" },
+  { label: "Press Release", href: "/press-release" },
+  { label: "Investors", href: "/investors" },
+  { label: "Contact Us", href: "/contact" },
 ];
 
 const Header = () => {
@@ -20,9 +21,9 @@ const Header = () => {
           {/* Logo */}
           <a href="/" className="flex items-center lg:mr-auto">
             <img
-              src="/velrona_texted.png"
+              src="/LOGO MARK 1.png"
               alt="Velrona"
-              className="h-5 sm:h-10 lg:h-5 w-auto object-contain"
+              className="h-10 sm:h-15 lg:h-10 w-auto object-contain"
             />
           </a>
 

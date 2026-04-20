@@ -1,14 +1,18 @@
 const footerLinks = {
-  businesses: [
-    { label: "Onekit Inc", href: "#" },
-    { label: "Ticpin", href: "#" },
-    { label: "Caury Farms", href: "#" },
-    { label: "Ofran", href: "#" },
-  ],
+    businesses: [
+      { label: "Caury Farms", href: "#" },
+      { label: "Ofran", href: "#" },
+      { label: "Onekit Inc", href: "#" },
+      { label: "Baky", href: "#" },
+      { label: "Ticpin", href: "#" },
+      { label: "Paddl", href: "#" },
+    ],
   about: [
-    { label: "Culture", href: "/culture" },
-    { label: "Investors", href: "/contact" },
-    { label: "Blog", href: "#blog" },
+    { label: "Ventures", href: "#" },
+    { label: "Community", href: "#" },
+    { label: "Press Release", href: "#" },
+    { label: "Investors", href: "#" },
+
   ],
   contact: [
     { label: "Contact", href: "/contact" },
@@ -31,9 +35,9 @@ const Footer = () => {
           <div className="col-span-2 md:col-span-1">
             <a href="#home" className="flex items-center">
               <img
-                src="/velrona_texted.png"
+                src="/footer 1.png"
                 alt="Velrona"
-                className="h-5 lg:h-7 w-auto object-contain"
+                className="h-16 lg:h-14 w-auto object-contain"
               />
             </a>
           </div>

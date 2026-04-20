@@ -7,12 +7,16 @@ import onekitGray from "@/assets/onekit_gray.jpg";
 import ticpinGray from "@/assets/ticpin_gray.jpg";
 import cauryGray from "@/assets/caury_gray.jpg";
 import ofranGray from "@/assets/ofran_gray.jpg";
+import bakyGray from "@/assets/baky_gray.jpg.jpeg";
+import paddlGray from "@/assets/paddl_gray.jpg.jpeg";
 
 // Import org images (hover state)
 import onekitOrg from "@/assets/onekit_org.jpg";
 import ticpinOrg from "@/assets/ticpin_org.jpg";
 import cauryOrg from "@/assets/caury_org.jpg";
 import ofranOrg from "@/assets/ofran_org.jpg";
+import bakyOrg from "@/assets/baky_org.jpg.jpeg";
+import paddlOrg from "@/assets/paddl_org.jpg.jpeg";
 
 interface Business {
   id: number;
@@ -28,26 +32,6 @@ interface Business {
 const businesses: Business[] = [
   {
     id: 1,
-    name: "Onekit",
-    tagline: "",
-    subtitle: "Onekit Inc",
-    description: "Bringing ideas to life, one brand at a time. Onekit Inc partners with businesses to create impactful marketing through strategy, design, and storytelling.",
-    bgColor: "dark",
-    grayImage: onekitGray,
-    orgImage: onekitOrg,
-  },
-  {
-    id: 2,
-    name: "Ticpin",
-    tagline: "A VELRONA COMPANY",
-    subtitle: "Ticpin",
-    description: "Turning everyday plans into experiences. Ticpin helps you discover, book, and enjoy the best of dining, sports, and events - all in one place.",
-    bgColor: "yellow",
-    grayImage: ticpinGray,
-    orgImage: ticpinOrg,
-  },
-  {
-    id: 3,
     name: "Caury",
     tagline: "",
     subtitle: "Caury Farms",
@@ -57,7 +41,7 @@ const businesses: Business[] = [
     orgImage: cauryOrg,
   },
   {
-    id: 4,
+    id: 2,
     name: "Ofran",
     tagline: "",
     subtitle: "Ofran",
@@ -65,6 +49,46 @@ const businesses: Business[] = [
     bgColor: "dark",
     grayImage: ofranGray,
     orgImage: ofranOrg,
+  },
+  {
+    id: 3,
+    name: "Onekit",
+    tagline: "",
+    subtitle: "Onekit Inc",
+    description: "Bringing ideas to life, one brand at a time. Onekit Inc partners with businesses to create impactful marketing through strategy, design, and storytelling.",
+    bgColor: "dark",
+    grayImage: onekitGray,
+    orgImage: onekitOrg,
+  },
+  {
+    id: 4,
+    name: "Baky",
+    tagline: "",
+    subtitle: "Baky",
+    description: "From freshly baked delights to indulgent moments. Baky brings you handcrafted desserts made with care, using quality ingredients and baked to perfection—served fresh, straight from our kitchen to your cravings.",
+    bgColor: "dark",
+    grayImage: bakyGray,
+    orgImage: bakyOrg,
+  },
+  {
+    id: 5,
+    name: "Ticpin",
+    tagline: "A VELRONA COMPANY",
+    subtitle: "Ticpin",
+    description: "Turning everyday plans into experiences. Ticpin helps you discover, book, and enjoy the best of dining, sports, and events - all in one place.",
+    bgColor: "yellow",
+    grayImage: ticpinGray,
+    orgImage: ticpinOrg,
+  },
+  {
+    id: 6,
+    name: "Paddl",
+    tagline: "",
+    subtitle: "Paddl",
+    description: "From first serves to winning rallies. Paddl offers premium pickleball courts designed for every skill level—well-maintained, high-quality spaces where energy, competition, and community come together.",
+    bgColor: "dark",
+    grayImage: paddlGray,
+    orgImage: paddlOrg,
   },
 ];
 
