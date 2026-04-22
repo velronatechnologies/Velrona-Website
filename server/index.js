@@ -54,20 +54,23 @@ const contentSchema = new mongoose.Schema({
 const Content = mongoose.model('Content', contentSchema);
 
 // Image Upload Endpoint
-app.post('/api/upload', upload.single('file'), (req, res) => {
-  console.log('Upload request received');
-  try {
+app.post('/api/upload', (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      console.error('Multer/Cloudinary Error:', err);
+      return res.status(500).json({ 
+        error: 'Upload failed', 
+        details: err.message 
+      });
+    }
+    
     if (!req.file) {
-      console.error('No file in request');
       return res.status(400).json({ error: 'No file uploaded' });
     }
+    
     console.log('File successfully uploaded to Cloudinary:', req.file.path);
-    // Return the Cloudinary URL
     res.json({ secure_url: req.file.path });
-  } catch (err) {
-    console.error('Cloudinary upload error:', err);
-    res.status(500).json({ error: 'Cloudinary upload failed' });
-  }
+  });
 });
 
 // Admin Pushing Content
