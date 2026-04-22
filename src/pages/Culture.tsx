@@ -16,11 +16,11 @@ const Culture = () => {
                         className="text-center"
                     >
                         {/* Subtitle */}
-                        <p className="text-lg sm:text-xl lg:text-4xl text-foreground mb-2 lg:mb-4">
-                            Our guiding cultural principle at Velrona
+                        <p className="text-lg lg:text-2xl text-accent mb-4 font-medium uppercase tracking-widest">
+                            Our guiding cultural principle
                         </p>
                         {/* Main Heading */}
-                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground tracking-tight leading-tight">
+                        <h1 className="text-4xl lg:text-7xl font-extrabold text-foreground tracking-tight leading-tight uppercase mb-8">
                             Excellence begins with alertness
                         </h1>
                     </motion.div>

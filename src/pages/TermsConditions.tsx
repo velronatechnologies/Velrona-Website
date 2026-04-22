@@ -49,6 +49,8 @@ const TermsConditions = () => {
                                     <li><strong>Ticpin</strong> – A ticketing platform for events, dining, and turf bookings.</li>
                                     <li><strong>Ofran</strong> – Provides legal services for businesses.</li>
                                     <li><strong>Caury Farms</strong> – Produces cow products and manages coconut farms.</li>
+                                    <li><strong>Baky</strong> – Brings you handcrafted desserts made with care, using quality ingredients and baked to perfection.</li>
+                                    <li><strong>Paddl</strong> – Offers premium pickleball courts designed for every skill level, well-maintained and high-quality spaces.</li>
                                 </ul>
                                 <p className="text-base lg:text-lg text-foreground leading-relaxed mt-4">
                                     These T&C apply to all Services offered by Velrona and its group companies.
@@ -260,7 +262,7 @@ const TermsConditions = () => {
                                     </p>
                                     <p className="text-base lg:text-lg text-foreground">
                                         Email: <a href="mailto:velronatechnologies@gmail.com" className="text-accent hover:underline">
-                                            velronatechnologies@gmail.com
+                                            support@velrona.com
                                         </a>
                                     </p>
                                 </div>

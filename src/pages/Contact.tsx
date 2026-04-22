@@ -41,7 +41,7 @@ const Contact = () => {
                         transition={{ duration: 0.8, ease: "easeOut" }}
                         className="text-center mb-16 lg:mb-24"
                     >
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground tracking-tight mb-4">
+                        <h1 className="text-4xl lg:text-7xl font-extrabold text-foreground tracking-tight mb-4 uppercase">
                             Get in Touch
                         </h1>
                         <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground max-w-2xl mx-auto">
@@ -144,7 +144,7 @@ const Contact = () => {
                                 {/* Submit Button */}
                                 <button
                                     type="submit"
-                                    className="w-full sm:w-auto px-8 py-3 bg-foreground text-background rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-accent hover:text-accent-foreground transition-all duration-300 group"
+                                    className="w-full sm:w-auto px-8 py-3 bg-foreground text-background rounded-lg font-medium flex items-center justify-center gap-2"
                                 >
                                     <span>Send Message</span>
                                     <Send

@@ -8,11 +8,11 @@ const footerLinks = {
       { label: "Paddl", href: "#" },
     ],
   about: [
-    { label: "Ventures", href: "#" },
-    { label: "Community", href: "#" },
-    { label: "Press Release", href: "#" },
-    { label: "Investors", href: "#" },
-
+    { label: "Ventures", href: "/ventures" },
+    { label: "CSR Initiatives", href: "/community/csr", isSub: true },
+    { label: "Non-CSR Initiatives", href: "/community/non-csr", isSub: true },
+    { label: "Press Release", href: "/press-release" },
+    { label: "Investors", href: "/investors" },
   ],
   contact: [
     { label: "Contact", href: "/contact" },
@@ -67,7 +67,7 @@ const Footer = () => {
                 <li key={link.label}>
                   <a
                     href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className={`text-sm text-muted-foreground hover:text-foreground transition-colors ${link.isSub ? "pl-4 text-xs" : ""}`}
                   >
                     {link.label}
                   </a>
