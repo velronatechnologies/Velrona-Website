@@ -51,6 +51,10 @@ const contentSchema = new mongoose.Schema({
   date: String,
   category: String,
   communityType: String,
+  pinned: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const Content = mongoose.model('Content', contentSchema);
@@ -95,10 +99,26 @@ app.get('/api/content/:category', async (req, res) => {
       filter.communityType = req.query.communityType;
     }
 
-    const items = await Content.find(filter).sort({ _id: -1 });
+    const items = await Content.find(filter).sort({ pinned: -1, _id: -1 });
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch content' });
+  }
+});
+
+// Toggle pin status for a content item
+app.patch('/api/content/:id/pin', async (req, res) => {
+  try {
+    const item = await Content.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    item.pinned = !item.pinned;
+    await item.save();
+    res.json(item);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to toggle pin status' });
   }
 });
 

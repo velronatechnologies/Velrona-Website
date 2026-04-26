@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar } from "lucide-react";
+import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar, Pin } from "lucide-react";
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -28,19 +28,23 @@ interface ContentItem {
   date: string;
   category: "community" | "press" | "investors";
   communityType?: "csr" | "non-csr";
+  pinned?: boolean;
 }
 
 const Admin = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [publishedItems, setPublishedItems] = useState<ContentItem[]>([]);
+  const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     image: "",
     category: "community" as ContentItem["category"],
     communityType: "csr" as "csr" | "non-csr",
+    publishYear: String(currentYear),
   });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pinUpdatingId, setPinUpdatingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,6 +70,7 @@ const Admin = () => {
   };
 
   const handleEdit = (item: ContentItem) => {
+    const yearMatch = item.date?.match(/\b(19|20)\d{2}\b/);
     setEditingId(item._id);
     setFormData({
       title: item.title,
@@ -73,6 +78,7 @@ const Admin = () => {
       image: item.image,
       category: item.category,
       communityType: item.communityType || "csr",
+      publishYear: yearMatch?.[0] || String(currentYear),
     });
     // Scroll to form
     const formElement = document.querySelector('form');
@@ -87,6 +93,7 @@ const Admin = () => {
       image: "",
       category: formData.category,
       communityType: formData.communityType,
+      publishYear: String(currentYear),
     });
   };
 
@@ -138,11 +145,14 @@ const Admin = () => {
     try {
       const url = editingId ? `/api/content/${editingId}` : "/api/content";
       const method = editingId ? "PUT" : "POST";
+      const selectedYear = /^\d{4}$/.test(formData.publishYear)
+        ? formData.publishYear
+        : String(currentYear);
       
       const payload = {
         ...formData,
         communityType: formData.category === "community" ? formData.communityType : undefined,
-        date: editingId ? undefined : new Date().toLocaleDateString(),
+        date: `01/01/${selectedYear}`,
       };
 
       const res = await fetch(url, {
@@ -152,7 +162,14 @@ const Admin = () => {
       });
       if (res.ok) {
         toast.success(editingId ? "Content updated successfully!" : `${formData.category} content published!`);
-        setFormData({ title: "", description: "", image: "", category: formData.category });
+        setFormData({
+          title: "",
+          description: "",
+          image: "",
+          category: formData.category,
+          communityType: formData.communityType,
+          publishYear: String(currentYear),
+        });
         setEditingId(null);
         fetchItems(); 
       } else {
@@ -178,6 +195,27 @@ const Admin = () => {
     } catch (err) {
       console.error("Delete error:", err);
       toast.error("An error occurred while deleting.");
+    }
+  };
+
+  const handleTogglePin = async (id: string) => {
+    setPinUpdatingId(id);
+    try {
+      const res = await fetch(`/api/content/${id}/pin`, {
+        method: "PATCH",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to toggle pin status");
+      }
+
+      toast.success("Post pin status updated");
+      fetchItems();
+    } catch (err) {
+      console.error(err);
+      toast.error("Unable to update pin status");
+    } finally {
+      setPinUpdatingId(null);
     }
   };
 
@@ -326,6 +364,22 @@ const Admin = () => {
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
+                    <Label htmlFor="publishYear">Publish Year</Label>
+                    <select
+                      id="publishYear"
+                      value={formData.publishYear}
+                      onChange={(e) => setFormData((p) => ({ ...p, publishYear: e.target.value }))}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      {[currentYear + 1, currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map((year) => (
+                        <option key={year} value={String(year)}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="title">Title</Label>
                     <Input
                       id="title"
@@ -398,7 +452,14 @@ const Admin = () => {
                           <img src={item.image} className="w-full h-full object-cover" alt="" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-slate-900 truncate mb-1">{item.title}</h4>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h4 className="font-bold text-slate-900 truncate">{item.title}</h4>
+                            {item.pinned && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                <Pin className="w-3 h-3" /> Pinned
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
                              <Calendar className="w-3 h-3" /> {item.date}
                           </p>
@@ -407,7 +468,18 @@ const Admin = () => {
                               {item.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"}
                             </p>
                           )}
-                          <div className="flex gap-2 w-full sm:w-auto">
+                          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <Button
+                              type="button"
+                              variant={item.pinned ? "default" : "outline"}
+                              size="sm"
+                              className={`h-8 py-0 px-3 text-xs ${item.pinned ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+                              onClick={() => handleTogglePin(item._id)}
+                              disabled={pinUpdatingId === item._id}
+                            >
+                              <Pin className="w-3 h-3 mr-1" />
+                              {pinUpdatingId === item._id ? "Saving..." : item.pinned ? "Pinned" : "Pin"}
+                            </Button>
                             <Button 
                               variant="outline" 
                               size="sm" 
