@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
@@ -20,6 +21,7 @@ interface ContentPageProps {
 
 const ContentPage = ({ title, category, description }: ContentPageProps) => {
   const [items, setItems] = useState<ContentItem[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,11 +47,16 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
             className="mb-12 lg:mb-20 text-center max-w-3xl mx-auto"
           >
             <h1 className="text-4xl lg:text-7xl font-extrabold mb-8 text-black uppercase tracking-tight text-balance">{title}</h1>
-            <p className="text-lg text-slate-500 leading-relaxed text-balance">
+            <p className="text-lg text-slate-500 leading-relaxed text-balance lg:whitespace-nowrap mb-12">
               {description || `Discover the latest updates, stories, and opportunities within the Velrona ecosystem.`}
             </p>
           </motion.div>
+        </div>
 
+        {/* Full-width Divider Line (Edge-to-Edge) */}
+        <div className="w-full border-t border-slate-200 mb-12 mt-[-40px]"></div>
+
+        <div className="container mx-auto px-6 lg:px-16">
           {items.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {items.map((item, index) => (
@@ -59,23 +66,32 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className="group flex flex-col bg-[#EFEFEF] px-3 py-6 rounded-none"
+                  className="flex flex-col bg-[#EFEFEF] px-3 py-6 rounded-none"
                 >
-                  <div className="aspect-[16/9] relative overflow-hidden mb-5 bg-white rounded-none mt-[-6px]">
+                  <div 
+                    className="aspect-[16/9] relative overflow-hidden mb-5 bg-white rounded-none mt-[-6px] cursor-pointer"
+                    onClick={() => navigate(`/post/${item._id}`)}
+                  >
                     <img
                       src={item.image}
                       alt={item.title}
-                      className="w-full h-full object-cover transition-none"
+                      className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="flex flex-col flex-1">
-                    <h3 className="text-xl lg:text-2xl font-bold mb-8 text-black leading-tight">
+                    <h3 
+                      className="text-xl lg:text-2xl font-bold mb-8 text-black leading-tight cursor-pointer"
+                      onClick={() => navigate(`/post/${item._id}`)}
+                    >
                       {item.title}
                     </h3>
 
                     <div className="mt-auto flex items-center justify-between text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                       <span>{item.date}</span>
-                      <span className="border-b border-slate-600 pb-0.5 cursor-pointer hover:text-black hover:border-black transition-all">
+                      <span 
+                        onClick={() => navigate(`/post/${item._id}`)}
+                        className="border-b border-slate-600 pb-0.5 cursor-pointer"
+                      >
                         Read more
                       </span>
                     </div>

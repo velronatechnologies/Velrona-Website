@@ -4,6 +4,7 @@ import cors from 'cors';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import fs from 'fs';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -49,6 +50,7 @@ const contentSchema = new mongoose.Schema({
   image: String,
   date: String,
   category: String,
+  communityType: String,
 });
 
 const Content = mongoose.model('Content', contentSchema);
@@ -87,10 +89,41 @@ app.post('/api/content', async (req, res) => {
 // Fetching Content by Category
 app.get('/api/content/:category', async (req, res) => {
   try {
-    const items = await Content.find({ category: req.params.category }).sort({ _id: -1 });
+    const filter = { category: req.params.category };
+
+    if (req.params.category === 'community' && req.query.communityType) {
+      filter.communityType = req.query.communityType;
+    }
+
+    const items = await Content.find(filter).sort({ _id: -1 });
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch content' });
+  }
+});
+
+// Fetching Single Content Item by ID
+app.get('/api/content/item/:id', async (req, res) => {
+  try {
+    const item = await Content.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+    res.json(item);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch item' });
+  }
+});
+
+// Update Content Item
+app.put('/api/content/:id', async (req, res) => {
+  try {
+    const updatedContent = await Content.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    res.json(updatedContent);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update content' });
   }
 });
 
@@ -106,8 +139,13 @@ app.delete('/api/content/:id', async (req, res) => {
 
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+app.use((req, res) => {
+  const indexPath = path.join(__dirname, '../dist/index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Not Found: Please run "npm run build" to generate the frontend build artifacts.');
+  }
 });
 
 app.listen(PORT, () => {

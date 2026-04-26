@@ -11,6 +11,7 @@ import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
 import ContentPage from "./pages/ContentPage";
 import InitiativesPage from "./pages/InitiativesPage";
+import PostDetail from "./pages/PostDetail";
 
 const queryClient = new QueryClient();
 
@@ -19,7 +20,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/community/non-csr" element={<InitiativesPage type="non-csr" />} />
           <Route path="/press-release" element={<ContentPage title="Press Release" category="press" description="Making an Impact: Velrona Group’s Commitment to Create a Better World Together" />} />
           <Route path="/investors" element={<ContentPage title="Investors" category="investors" />} />
+          <Route path="/post/:id" element={<PostDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

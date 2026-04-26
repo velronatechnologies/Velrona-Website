@@ -27,6 +27,7 @@ interface ContentItem {
   image: string;
   date: string;
   category: "community" | "press" | "investors";
+  communityType?: "csr" | "non-csr";
 }
 
 const Admin = () => {
@@ -37,21 +38,56 @@ const Admin = () => {
     description: "",
     image: "",
     category: "community" as ContentItem["category"],
+    communityType: "csr" as "csr" | "non-csr",
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchItems();
-  }, [formData.category]);
+  }, [formData.category, formData.communityType]);
 
   const fetchItems = async () => {
     try {
-      const res = await fetch(`/api/content/${formData.category}`);
+      const query =
+        formData.category === "community"
+          ? `?communityType=${encodeURIComponent(formData.communityType)}`
+          : "";
+      const res = await fetch(`/api/content/${formData.category}${query}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error: ${res.status}`);
+      }
       const data = await res.json();
       setPublishedItems(data);
     } catch (err) {
       console.error("Failed to fetch items:", err);
     }
+  };
+
+  const handleEdit = (item: ContentItem) => {
+    setEditingId(item._id);
+    setFormData({
+      title: item.title,
+      description: item.description,
+      image: item.image,
+      category: item.category,
+      communityType: item.communityType || "csr",
+    });
+    // Scroll to form
+    const formElement = document.querySelector('form');
+    formElement?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setFormData({
+      title: "",
+      description: "",
+      image: "",
+      category: formData.category,
+      communityType: formData.communityType,
+    });
   };
 
   const triggerFileInput = () => {
@@ -73,6 +109,12 @@ const Admin = () => {
         method: "POST",
         body: data,
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Upload failed: ${res.status}`);
+      }
+      
       const json = await res.json();
       if (json.secure_url) {
         setFormData((prev) => ({ ...prev, image: json.secure_url }));
@@ -94,21 +136,30 @@ const Admin = () => {
     }
 
     try {
-      const res = await fetch("/api/content", {
-        method: "POST",
+      const url = editingId ? `/api/content/${editingId}` : "/api/content";
+      const method = editingId ? "PUT" : "POST";
+      
+      const payload = {
+        ...formData,
+        communityType: formData.category === "community" ? formData.communityType : undefined,
+        date: editingId ? undefined : new Date().toLocaleDateString(),
+      };
+
+      const res = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          date: new Date().toLocaleDateString(),
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        toast.success(`${formData.category} content published!`);
+        toast.success(editingId ? "Content updated successfully!" : `${formData.category} content published!`);
         setFormData({ title: "", description: "", image: "", category: formData.category });
+        setEditingId(null);
         fetchItems(); 
+      } else {
+        throw new Error("Failed to save content");
       }
     } catch (err) {
-      toast.error("Failed to save content to database.");
+      toast.error(editingId ? "Failed to update content." : "Failed to save content to database.");
     }
   };
 
@@ -229,13 +280,48 @@ const Admin = () => {
             <TabsTrigger value="investors">Investors</TabsTrigger>
           </TabsList>
 
+          {formData.category === "community" && (
+            <div className="mb-6 flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant={formData.communityType === "csr" ? "default" : "outline"}
+                onClick={() => setFormData((p) => ({ ...p, communityType: "csr" }))}
+              >
+                CSR Initiatives
+              </Button>
+              <Button
+                type="button"
+                variant={formData.communityType === "non-csr" ? "default" : "outline"}
+                onClick={() => setFormData((p) => ({ ...p, communityType: "non-csr" }))}
+              >
+                Non-CSR Initiatives
+              </Button>
+            </div>
+          )}
+
           <div className="grid lg:grid-cols-5 gap-8 items-start">
             <Card className="lg:col-span-3">
               <CardHeader>
-                <CardTitle className="capitalize">New {formData.category} Post</CardTitle>
-                <CardDescription>
-                  Publish new content to the website.
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="capitalize">
+                      {editingId ? "Edit" : "New"} {formData.category} Post
+                      {formData.category === "community" && (
+                        <span className="ml-2 normal-case text-sm text-slate-500">
+                          ({formData.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"})
+                        </span>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      {editingId ? "Update existing content." : "Publish new content to the website."}
+                    </CardDescription>
+                  </div>
+                  {editingId && (
+                    <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                      Cancel Edit
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -291,7 +377,7 @@ const Admin = () => {
                   </div>
 
                   <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isUploading}>
-                    {isUploading ? "Uploading Image..." : "Publish Content"}
+                    {isUploading ? "Uploading Image..." : (editingId ? "Update Content" : "Publish Content")}
                   </Button>
                 </form>
               </CardContent>
@@ -316,14 +402,29 @@ const Admin = () => {
                           <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
                              <Calendar className="w-3 h-3" /> {item.date}
                           </p>
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            className="h-8 py-0 px-3 text-xs w-full sm:w-auto"
-                            onClick={() => handleDelete(item._id)}
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" /> Delete
-                          </Button>
+                          {item.category === "community" && item.communityType && (
+                            <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
+                              {item.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"}
+                            </p>
+                          )}
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 py-0 px-3 text-xs"
+                              onClick={() => handleEdit(item)}
+                            >
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              className="h-8 py-0 px-3 text-xs"
+                              onClick={() => handleDelete(item._id)}
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" /> Delete
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
