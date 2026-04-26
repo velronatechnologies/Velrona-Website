@@ -94,12 +94,13 @@ app.post('/api/content', async (req, res) => {
 app.get('/api/content/:category', async (req, res) => {
   try {
     const filter = { category: req.params.category };
+    const pinnedFirst = req.query.pinnedFirst === 'true';
 
     if (req.params.category === 'community' && req.query.communityType) {
       filter.communityType = req.query.communityType;
     }
 
-    const items = await Content.find(filter).sort({ pinned: -1, _id: -1 });
+    const items = await Content.find(filter).sort(pinnedFirst ? { pinned: -1, _id: -1 } : { _id: -1 });
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch content' });

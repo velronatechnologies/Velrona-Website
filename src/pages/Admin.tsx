@@ -148,11 +148,19 @@ const Admin = () => {
       const selectedYear = /^\d{4}$/.test(formData.publishYear)
         ? formData.publishYear
         : String(currentYear);
-      
+
       const payload = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        image: formData.image,
+        category: formData.category,
         communityType: formData.category === "community" ? formData.communityType : undefined,
-        date: `01/01/${selectedYear}`,
+        date:
+          formData.category === "community"
+            ? `01/01/${selectedYear}`
+            : editingId
+              ? undefined
+              : new Date().toLocaleDateString(),
       };
 
       const res = await fetch(url, {
@@ -363,21 +371,23 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="publishYear">Publish Year</Label>
-                    <select
-                      id="publishYear"
-                      value={formData.publishYear}
-                      onChange={(e) => setFormData((p) => ({ ...p, publishYear: e.target.value }))}
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      {[currentYear + 1, currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map((year) => (
-                        <option key={year} value={String(year)}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {formData.category === "community" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="publishYear">Publish Year</Label>
+                      <select
+                        id="publishYear"
+                        value={formData.publishYear}
+                        onChange={(e) => setFormData((p) => ({ ...p, publishYear: e.target.value }))}
+                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        {[currentYear + 1, currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map((year) => (
+                          <option key={year} value={String(year)}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="title">Title</Label>
@@ -468,18 +478,25 @@ const Admin = () => {
                               {item.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"}
                             </p>
                           )}
-                          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                            <Button
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <button
                               type="button"
-                              variant={item.pinned ? "default" : "outline"}
-                              size="sm"
-                              className={`h-8 py-0 px-3 text-xs ${item.pinned ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+                              role="switch"
+                              aria-checked={Boolean(item.pinned)}
+                              aria-label="Toggle pin"
+                              title={item.pinned ? "Pinned" : "Pin post"}
                               onClick={() => handleTogglePin(item._id)}
                               disabled={pinUpdatingId === item._id}
+                              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                                item.pinned ? "bg-green-500" : "bg-slate-300"
+                              } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
                             >
-                              <Pin className="w-3 h-3 mr-1" />
-                              {pinUpdatingId === item._id ? "Saving..." : item.pinned ? "Pinned" : "Pin"}
-                            </Button>
+                              <span
+                                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition-transform ${
+                                  item.pinned ? "translate-x-7" : "translate-x-1"
+                                }`}
+                              />
+                            </button>
                             <Button 
                               variant="outline" 
                               size="sm" 

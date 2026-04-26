@@ -17,6 +17,7 @@ interface CommunityItem {
   date: string;
   category: "community";
   communityType?: "csr" | "non-csr";
+  pinned?: boolean;
 }
 
 const extractYear = (dateValue: string) => {
@@ -32,7 +33,10 @@ const stripHtml = (html: string) =>
     .trim();
 
 const InitiativesPage = ({ type }: InitiativesPageProps) => {
+  const currentYear = String(new Date().getFullYear());
   const [activeYear, setActiveYear] = useState("");
+  const [hasManuallySelectedYear, setHasManuallySelectedYear] = useState(false);
+  const [prioritizePinned, setPrioritizePinned] = useState(false);
   const [items, setItems] = useState<CommunityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -44,6 +48,9 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
   };
 
   useEffect(() => {
+    setHasManuallySelectedYear(false);
+    setActiveYear("");
+
     const fetchHighlights = async () => {
       setIsLoading(true);
       try {
@@ -79,16 +86,27 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
       return;
     }
 
-    if (!activeYear || !years.includes(activeYear)) {
-      setActiveYear(years[0]);
+    if (!hasManuallySelectedYear && years.includes(currentYear)) {
+      setActiveYear(currentYear);
+      return;
     }
-  }, [years, activeYear]);
+
+    if (!activeYear || !years.includes(activeYear)) {
+      setActiveYear(years.includes(currentYear) ? currentYear : years[0]);
+    }
+  }, [years, activeYear, currentYear, hasManuallySelectedYear]);
 
   const highlightedItems = useMemo(() => {
     if (!items.length) return [];
-    if (!activeYear) return items;
-    return items.filter((item) => extractYear(item.date) === activeYear);
-  }, [items, activeYear]);
+
+    const yearItems = items.filter((item) => !activeYear || extractYear(item.date) === activeYear);
+
+    if (!prioritizePinned) {
+      return yearItems;
+    }
+
+    return yearItems.filter((item) => Boolean(item.pinned));
+  }, [items, activeYear, prioritizePinned]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -127,16 +145,23 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
           {/* Highlights Section */}
           <div className="mt-20">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-border pb-6 md:pb-8 mb-8 md:mb-12 gap-5 md:gap-0">
-              <h3 className="text-2xl font-bold text-foreground flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPrioritizePinned((prev) => !prev)}
+                className={`inline-flex items-center gap-3 text-2xl font-bold text-foreground ${prioritizePinned ? "underline underline-offset-8" : ""}`}
+              >
                 Highlights
-                <span className="w-2 h-2 bg-accent rounded-full"></span>
-              </h3>
+                <span className="w-2 h-2 rounded-full bg-accent"></span>
+              </button>
 
               <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
                 {years.map((year) => (
                   <button
                     key={year}
-                    onClick={() => setActiveYear(year)}
+                    onClick={() => {
+                      setHasManuallySelectedYear(true);
+                      setActiveYear(year);
+                    }}
                     className={`text-base sm:text-lg font-medium transition-all ${activeYear === year
                         ? "text-accent scale-110"
                         : "text-muted-foreground hover:text-foreground"
@@ -202,7 +227,9 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
             ) : (
               <div className="bg-slate-50 p-8 lg:p-16 rounded-[2rem] border-2 border-dashed border-slate-200 text-center text-muted-foreground">
                 {items.length
-                  ? `No highlights published for ${activeYear}. Any new ${title.toLowerCase()} post in this year will appear here automatically.`
+                  ? prioritizePinned
+                    ? `No pinned highlights found for ${activeYear}. Pin a ${title.toLowerCase()} post from Admin to show it here.`
+                    : `No highlights published for ${activeYear}. Any new ${title.toLowerCase()} post in this year will appear here automatically.`
                   : `No highlights published yet. Any new ${title.toLowerCase()} post will appear here automatically.`}
               </div>
             )}
