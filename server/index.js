@@ -29,8 +29,8 @@ cloudinary.config({
   api_secret: 'SdeZ6Mh-9TblFnVLToKFtswlcrI'
 });
 
-// Configure Multer Storage for Cloudinary
-const storage = new CloudinaryStorage({
+// Configure Multer storage for image uploads
+const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'velrona_uploads',
@@ -38,7 +38,18 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage: storage });
+// Configure Multer storage for PDF uploads
+const pdfStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'velrona_uploads/pdfs',
+    allowed_formats: ['pdf'],
+    resource_type: 'raw',
+  },
+});
+
+const imageUpload = multer({ storage: imageStorage });
+const pdfUpload = multer({ storage: pdfStorage });
 
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
@@ -48,9 +59,11 @@ const contentSchema = new mongoose.Schema({
   title: String,
   description: String,
   image: String,
+  pdf: String,
   date: String,
   category: String,
   communityType: String,
+  group: String,
   pinned: {
     type: Boolean,
     default: false,
@@ -60,21 +73,41 @@ const contentSchema = new mongoose.Schema({
 const Content = mongoose.model('Content', contentSchema);
 
 // Image Upload Endpoint
-app.post('/api/upload', (req, res, next) => {
-  upload.single('file')(req, res, (err) => {
+app.post('/api/upload/image', (req, res) => {
+  imageUpload.single('file')(req, res, (err) => {
     if (err) {
       console.error('Multer/Cloudinary Error:', err);
-      return res.status(500).json({ 
-        error: 'Upload failed', 
-        details: err.message 
+      return res.status(500).json({
+        error: 'Upload failed',
+        details: err.message
       });
     }
-    
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    
+
     console.log('File successfully uploaded to Cloudinary:', req.file.path);
+    res.json({ secure_url: req.file.path });
+  });
+});
+
+// PDF Upload Endpoint (Investors)
+app.post('/api/upload/pdf', (req, res) => {
+  pdfUpload.single('file')(req, res, (err) => {
+    if (err) {
+      console.error('Multer/Cloudinary Error:', err);
+      return res.status(500).json({
+        error: 'Upload failed',
+        details: err.message,
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    console.log('PDF successfully uploaded to Cloudinary:', req.file.path);
     res.json({ secure_url: req.file.path });
   });
 });
@@ -87,6 +120,16 @@ app.post('/api/content', async (req, res) => {
     res.status(201).json(newContent);
   } catch (err) {
     res.status(500).json({ error: 'Failed to save content' });
+  }
+});
+
+// Fetching ALL Content regardless of category
+app.get('/api/content/all_types', async (req, res) => {
+  try {
+    const items = await Content.find({}).sort({ _id: -1 });
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch content' });
   }
 });
 

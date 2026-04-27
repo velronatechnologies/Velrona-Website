@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar, Pin } from "lucide-react";
+import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar, Pin, FileText } from "lucide-react";
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -18,16 +18,18 @@ Quill.register(Size, true);
 
 // Cloudinary Configuration
 const CLOUDINARY_CLOUD_NAME = "demnzc2ct";
-const CLOUDINARY_UPLOAD_PRESET = "ml_default"; 
+const CLOUDINARY_UPLOAD_PRESET = "ml_default";
 
 interface ContentItem {
   _id: string;
   title: string;
   description: string;
   image: string;
+  pdf?: string;
   date: string;
-  category: "community" | "press" | "investors";
+  category: "community" | "press" | "investors" | "investor_overview";
   communityType?: "csr" | "non-csr";
+  group?: string;
   pinned?: boolean;
 }
 
@@ -39,23 +41,22 @@ const Admin = () => {
     title: "",
     description: "",
     image: "",
+    pdf: "",
     category: "community" as ContentItem["category"],
     communityType: "csr" as "csr" | "non-csr",
+    group: "",
     publishYear: String(currentYear),
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinUpdatingId, setPinUpdatingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetchItems();
-  }, [formData.category, formData.communityType]);
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchItems = async () => {
     try {
       const query =
         formData.category === "community"
-          ? `?communityType=${encodeURIComponent(formData.communityType)}`
+          ? `?communityType=${encodeURIComponent(formData.communityType || "csr")}`
           : "";
       const res = await fetch(`/api/content/${formData.category}${query}`);
       if (!res.ok) {
@@ -63,11 +64,15 @@ const Admin = () => {
         throw new Error(errorData.error || `Server error: ${res.status}`);
       }
       const data = await res.json();
-      setPublishedItems(data);
+      setPublishedItems(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch items:", err);
     }
   };
+
+  useEffect(() => {
+    fetchItems();
+  }, [formData.category, formData.communityType]);
 
   const handleEdit = (item: ContentItem) => {
     const yearMatch = item.date?.match(/\b(19|20)\d{2}\b/);
@@ -76,8 +81,10 @@ const Admin = () => {
       title: item.title,
       description: item.description,
       image: item.image,
+      pdf: item.pdf || "",
       category: item.category,
       communityType: item.communityType || "csr",
+      group: item.group || "",
       publishYear: yearMatch?.[0] || String(currentYear),
     });
     // Scroll to form
@@ -91,8 +98,10 @@ const Admin = () => {
       title: "",
       description: "",
       image: "",
+      pdf: "",
       category: formData.category,
       communityType: formData.communityType,
+      group: "",
       publishYear: String(currentYear),
     });
   };
@@ -103,7 +112,13 @@ const Admin = () => {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const triggerPdfFileInput = () => {
+    if (!isUploading) {
+      pdfFileInputRef.current?.click();
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -112,16 +127,16 @@ const Admin = () => {
     data.append("file", file);
 
     try {
-      const res = await fetch("/api/upload", {
+      const res = await fetch("/api/upload/image", {
         method: "POST",
         body: data,
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || `Upload failed: ${res.status}`);
       }
-      
+
       const json = await res.json();
       if (json.secure_url) {
         setFormData((prev) => ({ ...prev, image: json.secure_url }));
@@ -135,10 +150,51 @@ const Admin = () => {
     }
   };
 
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      toast.error("Please upload a valid PDF file.");
+      return;
+    }
+
+    setIsUploading(true);
+    const data = new FormData();
+    data.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload/pdf", {
+        method: "POST",
+        body: data,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Upload failed: ${res.status}`);
+      }
+
+      const json = await res.json();
+      if (json.secure_url) {
+        setFormData((prev) => ({ ...prev, pdf: json.secure_url }));
+        toast.success("PDF uploaded successfully!");
+      }
+    } catch (err) {
+      toast.error("Failed to upload PDF.");
+      console.error(err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.description || !formData.image) {
+    if (!formData.title || (formData.category !== "investor_overview" && (!formData.description || !formData.image))) {
       toast.error("Please fill in all fields and upload an image.");
+      return;
+    }
+    if ((formData.category === "investors" || formData.category === "investor_overview") && !formData.pdf) {
+      toast.error("Please upload a PDF document.");
       return;
     }
 
@@ -153,8 +209,10 @@ const Admin = () => {
         title: formData.title,
         description: formData.description,
         image: formData.image,
+        pdf: (formData.category === "investors" || formData.category === "investor_overview") ? formData.pdf : undefined,
         category: formData.category,
         communityType: formData.category === "community" ? formData.communityType : undefined,
+        group: formData.category === "investor_overview" ? formData.group : undefined,
         date:
           formData.category === "community"
             ? `01/01/${selectedYear}`
@@ -174,12 +232,14 @@ const Admin = () => {
           title: "",
           description: "",
           image: "",
+          pdf: "",
           category: formData.category,
           communityType: formData.communityType,
+          group: "",
           publishYear: String(currentYear),
         });
         setEditingId(null);
-        fetchItems(); 
+        fetchItems();
       } else {
         throw new Error("Failed to save content");
       }
@@ -231,7 +291,7 @@ const Admin = () => {
     toolbar: [
       [{ 'size': FONT_SIZES }],
       ['bold', 'italic', 'underline'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
       ['clean']
     ],
   };
@@ -320,10 +380,11 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="community" className="w-full" onValueChange={(v) => setFormData(p => ({ ...p, category: v as any }))}>
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="community">Community</TabsTrigger>
             <TabsTrigger value="press">Press Release</TabsTrigger>
             <TabsTrigger value="investors">Investors</TabsTrigger>
+            <TabsTrigger value="investor_overview">Investor Resources</TabsTrigger>
           </TabsList>
 
           {formData.category === "community" && (
@@ -389,56 +450,123 @@ const Admin = () => {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      placeholder="Enter heading..."
-                      value={formData.title}
-                      onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                    />
-                  </div>
+                  {formData.category === 'investor_overview' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Select Document Type</Label>
+                      <select
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
+                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="">Choose document...</option>
+                        <option value="Presentation">Presentation</option>
+                        <option value="Shareholders' Letter">Shareholders' Letter</option>
+                        <option value="Earnings Call Replay">Earnings Call Replay</option>
+                        <option value="Earnings Call Transcript">Earnings Call Transcript</option>
+                      </select>
+                      <p className="text-[10px] text-slate-500 italic">This will automatically link to the corresponding item in the Investors box.</p>
+                    </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <div className="bg-white rounded-md overflow-hidden border border-input">
-                      <ReactQuill
-                        theme="snow"
-                        value={formData.description}
-                        onChange={(content) => setFormData((p) => ({ ...p, description: content }))}
-                        modules={quillModules}
-                        formats={quillFormats}
-                        placeholder="Enter detailed content..."
-                        className="min-h-[300px]"
+                  {formData.category !== 'investor_overview' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        placeholder="Enter heading..."
+                        value={formData.title}
+                        onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
                       />
                     </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label>Feature Image</Label>
-                    <div 
-                      onClick={triggerFileInput}
-                      className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
-                      {formData.image ? (
-                        <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-sm">
-                          <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, image: "" })); }}>
-                              <Trash2 className="w-4 h-4 mr-2" /> Remove
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="p-4 bg-white rounded-full shadow-sm mb-4">
-                            {isUploading ? <Loader2 className="w-8 h-8 text-blue-600 animate-spin" /> : <Upload className="w-8 h-8 text-blue-600" />}
-                          </div>
-                          <p className="text-sm font-medium text-slate-700">Click to upload image</p>
-                          <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileUpload} />
-                        </>
-                      )}
+                  {formData.category !== 'investor_overview' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <div className="bg-white rounded-md overflow-hidden border border-input">
+                        <ReactQuill
+                          theme="snow"
+                          value={formData.description}
+                          onChange={(content) => setFormData((p) => ({ ...p, description: content }))}
+                          modules={quillModules}
+                          formats={quillFormats}
+                          placeholder="Enter detailed content..."
+                          className="min-h-[300px]"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {formData.category !== 'investor_overview' && (
+                    <div className="space-y-2">
+                      <Label>Feature Image</Label>
+                      <div 
+                        onClick={triggerFileInput}
+                        className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
+                        {formData.image ? (
+                          <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-sm">
+                            <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, image: "" })); }}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Remove
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="p-4 bg-white rounded-full shadow-sm mb-4">
+                              {isUploading ? <Loader2 className="w-8 h-8 text-blue-600 animate-spin" /> : <Upload className="w-8 h-8 text-blue-600" />}
+                            </div>
+                            <p className="text-sm font-medium text-slate-700">Click to upload image</p>
+                            <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {(formData.category === "investors" || formData.category === "investor_overview") && (
+                    <div className="space-y-2">
+                      <Label>PDF Document</Label>
+                      <div
+                        onClick={triggerPdfFileInput}
+                        className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-6 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer"
+                      >
+                        <div className="p-3 bg-white rounded-full shadow-sm mb-3">
+                          {isUploading ? <Loader2 className="w-6 h-6 text-blue-600 animate-spin" /> : <FileText className="w-6 h-6 text-blue-600" />}
+                        </div>
+                        {formData.pdf ? (
+                          <>
+                            <p className="text-sm font-medium text-slate-700 text-center break-all px-2">
+                              {decodeURIComponent(formData.pdf.split("/").pop() || "uploaded.pdf")}
+                            </p>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="mt-3"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFormData((p) => ({ ...p, pdf: "" }));
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Remove PDF
+                            </Button>
+                          </>
+                        ) : (
+                          <p className="text-sm font-medium text-slate-700">Click to upload PDF</p>
+                        )}
+                        <input
+                          type="file"
+                          ref={pdfFileInputRef}
+                          accept="application/pdf"
+                          className="hidden"
+                          onChange={handlePdfUpload}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isUploading}>
                     {isUploading ? "Uploading Image..." : (editingId ? "Update Content" : "Publish Content")}
@@ -452,7 +580,7 @@ const Admin = () => {
                 <ImageIcon className="w-5 h-5 text-slate-400" />
                 Live Content ({publishedItems.length})
               </h3>
-              
+
               <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {publishedItems.length > 0 ? (
                   publishedItems.map((item) => (
@@ -471,12 +599,15 @@ const Admin = () => {
                             )}
                           </div>
                           <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
-                             <Calendar className="w-3 h-3" /> {item.date}
+                            <Calendar className="w-3 h-3" /> {item.date}
                           </p>
                           {item.category === "community" && item.communityType && (
                             <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
                               {item.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"}
                             </p>
+                          )}
+                          {item.category === "investors" && item.pdf && (
+                            <p className="text-[10px] uppercase tracking-wider text-blue-700 mb-2">PDF attached</p>
                           )}
                           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <button
@@ -487,27 +618,25 @@ const Admin = () => {
                               title={item.pinned ? "Pinned" : "Pin post"}
                               onClick={() => handleTogglePin(item._id)}
                               disabled={pinUpdatingId === item._id}
-                              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                                item.pinned ? "bg-green-500" : "bg-slate-300"
-                              } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
+                              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${item.pinned ? "bg-green-500" : "bg-slate-300"
+                                } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
                             >
                               <span
-                                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition-transform ${
-                                  item.pinned ? "translate-x-7" : "translate-x-1"
-                                }`}
+                                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition-transform ${item.pinned ? "translate-x-7" : "translate-x-1"
+                                  }`}
                               />
                             </button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="h-8 py-0 px-3 text-xs"
                               onClick={() => handleEdit(item)}
                             >
                               Edit
                             </Button>
-                            <Button 
-                              variant="destructive" 
-                              size="sm" 
+                            <Button
+                              variant="destructive"
+                              size="sm"
                               className="h-8 py-0 px-3 text-xs"
                               onClick={() => handleDelete(item._id)}
                             >

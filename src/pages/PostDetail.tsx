@@ -11,6 +11,7 @@ interface ContentItem {
   title: string;
   description: string;
   image: string;
+  pdf?: string;
   date: string;
   category: string;
 }
@@ -58,6 +59,9 @@ const PostDetail = () => {
   // Determine page header title based on category
   const pageTitle = item.category === 'press' ? 'Press Release' : item.category === 'community' ? 'Community' : 'Investors';
   const pageDesc = item.category === 'press' ? "Making an Impact: Velrona Group’s Commitment to Create a Better World Together" : "";
+  const investorPdfViewerUrl = item.pdf
+    ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(item.pdf)}`
+    : "";
   const normalizedDescription = (item.description || "")
     .replace(/font-size\s*:\s*[^;"']+;?/gi, "")
     .replace(/style="\s*"/gi, "");
@@ -112,6 +116,18 @@ const PostDetail = () => {
             </div>
 
             <div className="max-w-4xl mx-auto w-full overflow-visible">
+              {item.category === "investors" && item.pdf && (
+                <div className="mb-8">
+                  <a
+                    href={investorPdfViewerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  >
+                    Open Investor PDF
+                  </a>
+                </div>
+              )}
               <div 
                 className="prose prose-slate lg:prose-xl max-w-none 
                   prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-6 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
