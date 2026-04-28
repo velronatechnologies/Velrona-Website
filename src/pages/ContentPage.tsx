@@ -14,6 +14,7 @@ interface ContentItem {
   date: string;
   category: "community" | "press" | "investors" | "investor_overview";
   group?: string;
+  sections?: { text: string; image: string }[];
 }
 
 interface ContentPageProps {
@@ -34,8 +35,11 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
     "Earnings Call Transcript",
   ];
 
-  const getPdfViewerUrl = (pdfUrl: string) =>
-    `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(pdfUrl)}`;
+  const getNativeViewerUrl = (pdfUrl: string) => {
+    if (!pdfUrl) return "#";
+    // Using Google Docs viewer as it's the most compatible with Cloudinary raw links
+    return `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}`;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,14 +61,14 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
   const findItemByTitle = (title: string) => {
     if (!title || !items || !Array.isArray(items)) return null;
     const searchTitle = title.trim().toLowerCase();
-    
+
     // Search across ALL fetched items to be safe
     return items.find(item => {
       const itemTitle = item.title?.trim().toLowerCase();
       if (!itemTitle) return false;
-      return itemTitle === searchTitle || 
-             itemTitle.includes(searchTitle) || 
-             searchTitle.includes(itemTitle);
+      return itemTitle === searchTitle ||
+        itemTitle.includes(searchTitle) ||
+        searchTitle.includes(itemTitle);
     });
   };
 
@@ -115,7 +119,7 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
                           </h3>
                         ) : (
                           <a 
-                            href={pdfUrl ? getPdfViewerUrl(pdfUrl) : "#"} 
+                            href={getNativeViewerUrl(pdfUrl || "")} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className={`flex items-center justify-between gap-3 group ${!pdfUrl ? "opacity-60 grayscale cursor-not-allowed" : ""}`}
@@ -169,9 +173,9 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
         )}
 
         <div id="investors-content-list" className="container mx-auto px-6 lg:px-16 mt-12">
-          {items.filter(item => item.category === "investors").length > 0 ? (
+          {items.filter(item => item.category === category).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {items.filter(item => item.category === "investors").map((item, index) => (
+              {items.filter(item => item.category === category).map((item, index) => (
                 <motion.article
                   key={item._id}
                   initial={{ opacity: 0, y: 20 }}
@@ -202,7 +206,7 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
                       <span>{item.date}</span>
                       {item.category === "investors" && item.pdf ? (
                         <a
-                          href={getPdfViewerUrl(item.pdf)}
+                          href={getNativeViewerUrl(item.pdf)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="border-b border-slate-600 pb-0.5"

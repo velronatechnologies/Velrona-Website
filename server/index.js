@@ -68,6 +68,10 @@ const contentSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  sections: [{
+    text: String,
+    image: String,
+  }],
 });
 
 const Content = mongoose.model('Content', contentSchema);

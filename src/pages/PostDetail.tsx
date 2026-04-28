@@ -14,6 +14,7 @@ interface ContentItem {
   pdf?: string;
   date: string;
   category: string;
+  sections?: { text: string; image: string }[];
 }
 
 const PostDetail = () => {
@@ -94,30 +95,30 @@ const PostDetail = () => {
             transition={{ delay: 0.2 }}
             className="max-w-5xl mx-auto"
           >
-              <div className="flex items-center gap-3 text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">
-                <span className="p-1.5 bg-slate-100 rounded-md">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                </span>
-                {item.date}
-              </div>
-              
-              <h2 className="text-3xl lg:text-5xl font-black text-black mb-10 leading-[1.1] tracking-tight">
-                {item.title}
-              </h2>
+            <div className="flex items-center gap-3 text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">
+              <span className="p-1.5 bg-slate-100 rounded-md">
+                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              </span>
+              {item.date}
+            </div>
+
+            <h2 className="text-3xl lg:text-5xl font-black text-black mb-10 leading-[1.1] tracking-tight">
+              {item.title}
+            </h2>
 
             {/* Post image shown in full and constrained for comfortable reading */}
             <div className="w-full max-w-2xl mx-auto mb-12 bg-slate-100 p-2 sm:p-3">
-              <img 
-                src={item.image} 
-                alt={item.title} 
+              <img
+                src={item.image}
+                alt={item.title}
                 className="w-full h-auto object-contain"
                 loading="eager"
               />
             </div>
 
-            <div className="max-w-4xl mx-auto w-full overflow-visible">
+            <div className="max-w-4xl mx-auto w-full px-4 md:px-0">
               {item.category === "investors" && item.pdf && (
-                <div className="mb-8">
+                <div className="max-w-4xl mx-auto mb-8">
                   <a
                     href={investorPdfViewerUrl}
                     target="_blank"
@@ -128,18 +129,51 @@ const PostDetail = () => {
                   </a>
                 </div>
               )}
-              <div 
-                className="prose prose-slate lg:prose-xl max-w-none 
+
+              {/* Main Content */}
+              <div
+                className="prose prose-slate lg:prose-xl max-w-4xl mx-auto 
                   prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-6 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
                   [&_p]:!text-[1.3rem] lg:[&_p]:!text-[1.45rem] [&_p_span]:!text-inherit [&_span]:!text-inherit
                   prose-headings:text-black prose-headings:font-bold prose-headings:mt-12 prose-headings:mb-6
                   prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-12
                   prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
                   prose-strong:text-black prose-strong:font-bold
-                  prose-ul:list-disc prose-ul:pl-6 prose-li:mb-2 break-words overflow-visible
-                  [&_*]:max-w-full [&_*]:overflow-visible [&_*]:whitespace-normal"
+                  prose-ul:list-disc prose-ul:pl-6 prose-li:mb-2 break-words mb-12"
                 dangerouslySetInnerHTML={{ __html: normalizedDescription }}
               />
+
+              {/* Dynamic Sections */}
+              {item.sections && item.sections.length > 0 && (
+                <div className="space-y-16">
+                  {item.sections.map((section, idx) => (
+                    <div key={idx} className="space-y-8">
+                      {section.image && (
+                        <div className="w-full max-w-2xl mx-auto bg-slate-100 p-2 sm:p-3 rounded-xl shadow-sm">
+                          <img
+                            src={section.image}
+                            alt={`Section ${idx + 1}`}
+                            className="w-full h-auto object-contain rounded-lg"
+                          />
+                        </div>
+                      )}
+                      {section.text && (
+                        <div
+                          className="prose prose-slate lg:prose-xl max-w-4xl mx-auto 
+                            prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-6 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
+                            [&_p]:!text-[1.3rem] lg:[&_p]:!text-[1.45rem] [&_p_span]:!text-inherit [&_span]:!text-inherit
+                            prose-headings:text-black prose-headings:font-bold prose-headings:mt-12 prose-headings:mb-6
+                            prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-12
+                            prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                            prose-strong:text-black prose-strong:font-bold
+                            prose-ul:list-disc prose-ul:pl-6 prose-li:mb-2 break-words"
+                          dangerouslySetInnerHTML={{ __html: section.text }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

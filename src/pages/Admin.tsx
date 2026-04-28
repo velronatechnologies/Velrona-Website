@@ -31,6 +31,7 @@ interface ContentItem {
   communityType?: "csr" | "non-csr";
   group?: string;
   pinned?: boolean;
+  sections?: { text: string; image: string }[];
 }
 
 const Admin = () => {
@@ -46,6 +47,7 @@ const Admin = () => {
     communityType: "csr" as "csr" | "non-csr",
     group: "",
     publishYear: String(currentYear),
+    sections: [] as { text: string; image: string }[],
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinUpdatingId, setPinUpdatingId] = useState<string | null>(null);
@@ -86,6 +88,7 @@ const Admin = () => {
       communityType: item.communityType || "csr",
       group: item.group || "",
       publishYear: yearMatch?.[0] || String(currentYear),
+      sections: item.sections || [],
     });
     // Scroll to form
     const formElement = document.querySelector('form');
@@ -103,6 +106,7 @@ const Admin = () => {
       communityType: formData.communityType,
       group: "",
       publishYear: String(currentYear),
+      sections: [],
     });
   };
 
@@ -179,9 +183,58 @@ const Admin = () => {
         setFormData((prev) => ({ ...prev, pdf: json.secure_url }));
         toast.success("PDF uploaded successfully!");
       }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const addSection = () => {
+    setFormData(prev => ({
+      ...prev,
+      sections: [...prev.sections, { text: "", image: "" }]
+    }));
+  };
+
+  const removeSection = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      sections: prev.sections.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSectionText = (index: number, text: string) => {
+    setFormData(prev => ({
+      ...prev,
+      sections: prev.sections.map((s, i) => i === index ? { ...s, text } : s)
+    }));
+  };
+
+  const handleSectionImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const data = new FormData();
+    data.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload/image", {
+        method: "POST",
+        body: data,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const json = await res.json();
+      if (json.secure_url) {
+        setFormData(prev => ({
+          ...prev,
+          sections: prev.sections.map((s, i) => i === index ? { ...s, image: json.secure_url } : s)
+        }));
+        toast.success("Section image uploaded!");
+      }
     } catch (err) {
-      toast.error("Failed to upload PDF.");
-      console.error(err);
+      toast.error("Failed to upload section image.");
     } finally {
       setIsUploading(false);
     }
@@ -219,6 +272,7 @@ const Admin = () => {
             : editingId
               ? undefined
               : new Date().toLocaleDateString(),
+        sections: formData.category === 'press' ? formData.sections : undefined,
       };
 
       const res = await fetch(url, {
@@ -237,6 +291,7 @@ const Admin = () => {
           communityType: formData.communityType,
           group: "",
           publishYear: String(currentYear),
+          sections: [],
         });
         setEditingId(null);
         fetchItems();
@@ -523,6 +578,76 @@ const Admin = () => {
                           </>
                         )}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic Sections - Only for Press Releases */}
+                  {formData.category === 'press' && (
+                    <div className="space-y-6 pt-6 border-t border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-lg font-bold">Additional Sections (Paragraph + Image)</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={addSection}>
+                          Add Section
+                        </Button>
+                      </div>
+
+                      {formData.sections.map((section, index) => (
+                        <Card key={index} className="bg-slate-50/50">
+                          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
+                            <CardTitle className="text-sm font-semibold">Section {index + 1}</CardTitle>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeSection(index)}>
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </CardHeader>
+                          <CardContent className="space-y-4 px-4 pb-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs">Section Image</Label>
+                              <div className="relative">
+                                {section.image ? (
+                                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-slate-200">
+                                    <img src={section.image} alt="Section Preview" className="w-full h-full object-cover" />
+                                    <Button 
+                                      type="button"
+                                      variant="destructive" 
+                                      size="sm" 
+                                      className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
+                                      onClick={() => setFormData(prev => ({
+                                        ...prev,
+                                        sections: prev.sections.map((s, i) => i === index ? { ...s, image: "" } : s)
+                                      }))}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-4">
+                                    <Input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      onChange={(e) => handleSectionImageUpload(index, e)}
+                                      className="cursor-pointer"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs">Section Paragraph</Label>
+                              <div className="bg-white rounded-md overflow-hidden border border-input">
+                                <ReactQuill
+                                  theme="snow"
+                                  value={section.text}
+                                  onChange={(content) => updateSectionText(index, content)}
+                                  modules={quillModules}
+                                  formats={quillFormats}
+                                  placeholder="Enter paragraph..."
+                                  className="min-h-[150px]"
+                                />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   )}
 
