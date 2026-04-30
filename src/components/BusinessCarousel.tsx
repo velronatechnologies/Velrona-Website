@@ -1,100 +1,49 @@
-import { useState, useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Import gray images (default state)
-import onekitGray from "@/assets/onekit_gray.jpg";
-import ticpinGray from "@/assets/ticpin_gray.jpg";
-import cauryGray from "@/assets/caury_gray.jpg";
-import ofranGray from "@/assets/ofran_gray.jpg";
-import bakyGray from "@/assets/baky_gray.jpg.jpeg";
-import paddlGray from "@/assets/paddl_gray.jpg.jpeg";
-
-// Import org images (hover state)
-import onekitOrg from "@/assets/onekit_org.jpg";
-import ticpinOrg from "@/assets/ticpin_org.jpg";
-import cauryOrg from "@/assets/caury_org.jpg";
-import ofranOrg from "@/assets/ofran_org.jpg";
-import bakyOrg from "@/assets/baky_org.jpg.jpeg";
-import paddlOrg from "@/assets/paddl_org.jpg.jpeg";
-
 interface Business {
-  id: number;
+  id: string | number;
   name: string;
   tagline: string;
   subtitle: string;
   description: string;
-  bgColor: "yellow" | "dark";
   grayImage: string;
   orgImage: string;
 }
 
-const businesses: Business[] = [
-  {
-    id: 1,
-    name: "Caury",
-    tagline: "",
-    subtitle: "Caury Farms",
-    description: "From cared cows to conscious living. Caury Farms offers authentic cow-based products produced ethically and supplied directly from the source.",
-    bgColor: "dark",
-    grayImage: cauryGray,
-    orgImage: cauryOrg,
-  },
-  {
-    id: 2,
-    name: "Ofran",
-    tagline: "",
-    subtitle: "Ofran",
-    description: "Simplifying compliance, one business at a time. Ofran helps entrepreneurs register, protect, and manage their businesses with reliable legal and compliance services.",
-    bgColor: "dark",
-    grayImage: ofranGray,
-    orgImage: ofranOrg,
-  },
-  {
-    id: 3,
-    name: "Onekit",
-    tagline: "",
-    subtitle: "Onekit Inc",
-    description: "Bringing ideas to life, one brand at a time. Onekit Inc partners with businesses to create impactful marketing through strategy, design, and storytelling.",
-    bgColor: "dark",
-    grayImage: onekitGray,
-    orgImage: onekitOrg,
-  },
-  {
-    id: 4,
-    name: "Baky",
-    tagline: "",
-    subtitle: "Baky",
-    description: "From freshly baked delights to indulgent moments. Baky brings you handcrafted desserts made with care, using quality ingredients and baked to perfection—served fresh, straight from our kitchen to your cravings.",
-    bgColor: "dark",
-    grayImage: bakyGray,
-    orgImage: bakyOrg,
-  },
-  {
-    id: 5,
-    name: "Ticpin",
-    tagline: "A VELRONA COMPANY",
-    subtitle: "Ticpin",
-    description: "Turning everyday plans into experiences. Ticpin helps you discover, book, and enjoy the best of dining, sports, and events - all in one place.",
-    bgColor: "yellow",
-    grayImage: ticpinGray,
-    orgImage: ticpinOrg,
-  },
-  {
-    id: 6,
-    name: "Paddl",
-    tagline: "",
-    subtitle: "Paddl",
-    description: "From first serves to winning rallies. Paddl offers premium pickleball courts designed for every skill level—well-maintained, high-quality spaces where energy, competition, and community come together.",
-    bgColor: "dark",
-    grayImage: paddlGray,
-    orgImage: paddlOrg,
-  },
-];
-
 const BusinessCarousel = () => {
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      try {
+        const res = await fetch("/api/content/investor_businesses");
+        const data = await res.json();
+        
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map((item: any) => ({
+            id: item._id,
+            name: item.title,
+            tagline: item.tagline || "",
+            subtitle: item.title,
+            description: item.description.replace(/<[^>]*>/g, ''), // Strip HTML for carousel
+            grayImage: item.grayImage || item.image, // Fallback to org image if gray not uploaded
+            orgImage: item.image
+          }));
+          setBusinesses(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch businesses for carousel:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBusinesses();
+  }, []);
 
   const scrollTo = (direction: "prev" | "next") => {
     const newIndex = direction === "next"
@@ -111,6 +60,16 @@ const BusinessCarousel = () => {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="py-20 flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (businesses.length === 0) return null;
 
   return (
     <section id="businesses" className="py-20 lg:py-32 bg-background">
@@ -172,7 +131,7 @@ const BusinessCarousel = () => {
               className="business-card-container flex-shrink-0 w-[320px] sm:w-[360px] lg:w-[420px] snap-start group"
             >
               {/* Image Card with Hover Effect */}
-              <div className="business-card aspect-[4/3] relative overflow-hidden rounded-2xl cursor-pointer shadow-md transition-opacity duration-700">
+              <div className="business-card aspect-[4/3] relative overflow-hidden rounded-2xl cursor-pointer transition-opacity duration-700">
                 {/* Gray Image (default) */}
                 <img
                   src={business.grayImage}

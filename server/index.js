@@ -72,6 +72,12 @@ const contentSchema = new mongoose.Schema({
     text: String,
     image: String,
   }],
+  stats: [{
+    label: String,
+    value: String,
+  }],
+  grayImage: String,
+  tagline: String,
 });
 
 const Content = mongoose.model('Content', contentSchema);

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, FileText } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import InvestorBusinessGrid from "@/components/InvestorBusinessGrid";
 
 interface ContentItem {
   _id: string;
@@ -118,9 +119,9 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
                             {entry}
                           </h3>
                         ) : (
-                          <a 
-                            href={getNativeViewerUrl(pdfUrl || "")} 
-                            target="_blank" 
+                          <a
+                            href={getNativeViewerUrl(pdfUrl || "")}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className={`flex items-center justify-between gap-3 group ${!pdfUrl ? "opacity-60 grayscale cursor-not-allowed" : ""}`}
                             onClick={(e) => !pdfUrl && e.preventDefault()}
@@ -226,18 +227,10 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
                 </motion.article>
               ))}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-6">
-                <span className="text-3xl text-slate-300">📄</span>
-              </div>
-              <h2 className="text-xl font-semibold text-slate-900 mb-2">No content yet</h2>
-              <p className="text-slate-500 max-w-md px-6">
-                Check back soon! Our team is working hard to bring you latest updates from the {title.toLowerCase()} section.
-              </p>
-            </div>
-          )}
+          ) : null}
         </div>
+
+        {isInvestorsPage && <InvestorBusinessGrid />}
       </main>
       <Footer />
     </div>

@@ -27,11 +27,14 @@ interface ContentItem {
   image: string;
   pdf?: string;
   date: string;
-  category: "community" | "press" | "investors" | "investor_overview";
+  category: "community" | "press" | "investors" | "investor_overview" | "investor_businesses";
   communityType?: "csr" | "non-csr";
   group?: string;
   pinned?: boolean;
   sections?: { text: string; image: string }[];
+  stats?: { label: string; value: string }[];
+  grayImage?: string;
+  tagline?: string;
 }
 
 const Admin = () => {
@@ -48,6 +51,9 @@ const Admin = () => {
     group: "",
     publishYear: String(currentYear),
     sections: [] as { text: string; image: string }[],
+    stats: [] as { label: string; value: string }[],
+    grayImage: "",
+    tagline: "",
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinUpdatingId, setPinUpdatingId] = useState<string | null>(null);
@@ -89,6 +95,9 @@ const Admin = () => {
       group: item.group || "",
       publishYear: yearMatch?.[0] || String(currentYear),
       sections: item.sections || [],
+      stats: item.stats || [],
+      grayImage: item.grayImage || "",
+      tagline: item.tagline || "",
     });
     // Scroll to form
     const formElement = document.querySelector('form');
@@ -240,6 +249,65 @@ const Admin = () => {
     }
   };
 
+  const triggerGrayFileInput = () => {
+    if (!isUploading) {
+      document.getElementById('gray-logo-upload')?.click();
+    }
+  };
+
+  const handleGrayImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const data = new FormData();
+    data.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload/image", {
+        method: "POST",
+        body: data,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const json = await res.json();
+      if (json.secure_url) {
+        setFormData((prev) => ({ ...prev, grayImage: json.secure_url }));
+        toast.success("Gray logo uploaded!");
+      }
+    } catch (err) {
+      toast.error("Failed to upload gray logo.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const addStat = () => {
+    if (formData.stats.length >= 2) {
+      toast.error("Maximum 2 statistics allowed.");
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      stats: [...prev.stats, { label: "", value: "" }]
+    }));
+  };
+
+  const removeStat = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      stats: prev.stats.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateStat = (index: number, field: "label" | "value", text: string) => {
+    setFormData(prev => ({
+      ...prev,
+      stats: prev.stats.map((s, i) => i === index ? { ...s, [field]: text } : s)
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || (formData.category !== "investor_overview" && (!formData.description || !formData.image))) {
@@ -273,6 +341,9 @@ const Admin = () => {
               ? undefined
               : new Date().toLocaleDateString(),
         sections: formData.category === 'press' ? formData.sections : undefined,
+        stats: formData.category === 'investor_businesses' ? formData.stats : undefined,
+        grayImage: formData.category === 'investor_businesses' ? formData.grayImage : undefined,
+        tagline: formData.category === 'investor_businesses' ? formData.tagline : undefined,
       };
 
       const res = await fetch(url, {
@@ -292,6 +363,9 @@ const Admin = () => {
           group: "",
           publishYear: String(currentYear),
           sections: [],
+          stats: [],
+          grayImage: "",
+          tagline: "",
         });
         setEditingId(null);
         fetchItems();
@@ -360,49 +434,6 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-6 lg:px-16">
       <style>{`
-        .ql-snow .ql-picker.ql-size .ql-picker-label::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item::before {
-          content: '14px' !important;
-        }
-        .ql-snow .ql-picker.ql-size .ql-picker-label {
-          color: #334155 !important;
-          text-decoration: none !important;
-          outline: none !important;
-          padding-left: 8px !important;
-        }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="8px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="8px"]::before { content: '8px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="10px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="10px"]::before { content: '10px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="12px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="12px"]::before { content: '12px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="14px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="14px"]::before { content: '14px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="16px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="16px"]::before { content: '16px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="18px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18px"]::before { content: '18px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="20px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="20px"]::before { content: '20px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="24px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="24px"]::before { content: '24px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="28px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="28px"]::before { content: '28px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="32px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="32px"]::before { content: '32px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="36px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="36px"]::before { content: '36px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="40px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="40px"]::before { content: '40px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="48px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="48px"]::before { content: '48px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="56px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="56px"]::before { content: '56px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="64px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="64px"]::before { content: '64px' !important; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="72px"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="72px"]::before { content: '72px' !important; }
-        
         /* Make the size picker scrollable */
         .ql-snow .ql-picker.ql-size .ql-picker-options {
           max-height: 250px;
@@ -435,11 +466,12 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="community" className="w-full" onValueChange={(v) => setFormData(p => ({ ...p, category: v as any }))}>
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 mb-8">
             <TabsTrigger value="community">Community</TabsTrigger>
             <TabsTrigger value="press">Press Release</TabsTrigger>
             <TabsTrigger value="investors">Investors</TabsTrigger>
             <TabsTrigger value="investor_overview">Investor Resources</TabsTrigger>
+            <TabsTrigger value="investor_businesses">Business Cards</TabsTrigger>
           </TabsList>
 
           {formData.category === "community" && (
@@ -581,6 +613,35 @@ const Admin = () => {
                     </div>
                   )}
 
+                  {formData.category === 'investor_businesses' && (
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                      
+                      <div className="space-y-2">
+                        <Label>Grayscale Logo (for main carousel hover effect)</Label>
+                        <div 
+                          onClick={triggerGrayFileInput}
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
+                          {formData.grayImage ? (
+                            <div className="relative h-20 w-full flex items-center justify-center">
+                              <img src={formData.grayImage} alt="Gray Preview" className="h-full object-contain" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, grayImage: "" })); }}>
+                                  <Trash2 className="w-4 h-4 mr-2" /> Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Upload className="w-4 h-4 text-blue-600" />
+                              <span className="text-xs font-medium text-slate-700">Upload Grayscale Logo</span>
+                            </div>
+                          )}
+                          <input type="file" id="gray-logo-upload" accept="image/*" className="hidden" onChange={handleGrayImageUpload} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Dynamic Sections - Only for Press Releases */}
                   {formData.category === 'press' && (
                     <div className="space-y-6 pt-6 border-t border-slate-200">
@@ -648,6 +709,63 @@ const Admin = () => {
                           </CardContent>
                         </Card>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Business Stats - Only for Investor Businesses */}
+                  {formData.category === 'investor_businesses' && (
+                    <div className="space-y-6 pt-6 border-t border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-lg font-bold">Business Statistics</Label>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={addStat}
+                          disabled={formData.stats.length >= 2}
+                        >
+                          Add Stat
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {formData.stats.map((stat, index) => (
+                          <Card key={index} className="bg-slate-50/50 relative overflow-visible border-none shadow-none bg-slate-100/50">
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
+                              onClick={() => removeStat(index)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                            <CardContent className="p-3 space-y-2">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] uppercase font-bold text-slate-500">Value (e.g. 45+)</Label>
+                                <Input 
+                                  placeholder="Value" 
+                                  value={stat.value}
+                                  onChange={(e) => updateStat(index, "value", e.target.value)}
+                                  className="h-8 text-sm font-bold bg-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] uppercase font-bold text-slate-500">Label (e.g. Direct Farms)</Label>
+                                <Input 
+                                  placeholder="Label" 
+                                  value={stat.label}
+                                  onChange={(e) => updateStat(index, "label", e.target.value)}
+                                  className="h-8 text-xs bg-white"
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      {formData.stats.length === 0 && (
+                        <p className="text-sm text-slate-400 italic text-center py-4">No statistics added yet. Add some to show on the business card.</p>
+                      )}
                     </div>
                   )}
 
@@ -735,22 +853,22 @@ const Admin = () => {
                             <p className="text-[10px] uppercase tracking-wider text-blue-700 mb-2">PDF attached</p>
                           )}
                           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={Boolean(item.pinned)}
-                              aria-label="Toggle pin"
-                              title={item.pinned ? "Pinned" : "Pin post"}
-                              onClick={() => handleTogglePin(item._id)}
-                              disabled={pinUpdatingId === item._id}
-                              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${item.pinned ? "bg-green-500" : "bg-slate-300"
-                                } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
-                            >
-                              <span
-                                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition-transform ${item.pinned ? "translate-x-7" : "translate-x-1"
-                                  }`}
-                              />
-                            </button>
+                             <button
+                               type="button"
+                               role="switch"
+                               aria-checked={Boolean(item.pinned)}
+                               aria-label="Toggle pin"
+                               title={item.pinned ? "Pinned" : "Pin post"}
+                               onClick={() => handleTogglePin(item._id)}
+                               disabled={pinUpdatingId === item._id}
+                               className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${item.pinned ? "bg-green-500" : "bg-slate-300"
+                                 } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
+                             >
+                               <span
+                                 className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${item.pinned ? "translate-x-5" : "translate-x-1"
+                                   }`}
+                               />
+                             </button>
                             <Button
                               variant="outline"
                               size="sm"

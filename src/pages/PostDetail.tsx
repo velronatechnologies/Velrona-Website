@@ -133,13 +133,18 @@ const PostDetail = () => {
               {/* Main Content */}
               <div
                 className="prose prose-slate lg:prose-xl max-w-4xl mx-auto 
-                  prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-6 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
+                  prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-1 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
                   [&_p]:!text-[1.3rem] lg:[&_p]:!text-[1.45rem] [&_p_span]:!text-inherit [&_span]:!text-inherit
                   prose-headings:text-black prose-headings:font-bold prose-headings:mt-12 prose-headings:mb-6
                   prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-12
                   prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
                   prose-strong:text-black prose-strong:font-bold
-                  prose-ul:list-disc prose-ul:pl-6 prose-li:mb-2 break-words mb-12"
+                  prose-ul:list-disc prose-ul:pl-8 prose-ul:!mt-0 prose-ol:list-decimal prose-ol:pl-8 prose-ol:!mt-0
+                  prose-li:text-slate-600 prose-li:my-0 prose-li:text-[1.3rem] lg:prose-li:text-[1.45rem]
+                  prose-li:marker:text-slate-600 [&_li::marker]:text-[1.1rem] lg:[&_li::marker]:text-[1.2rem]
+                  [&_li]:!text-[1.3rem] lg:[&_li]:!text-[1.45rem] [&_li_span]:!text-inherit [&_li]:!pl-3
+                  [&_li_p]:!my-0 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:!mt-0 [&_ol]:!mt-0
+                  break-words mb-12"
                 dangerouslySetInnerHTML={{ __html: normalizedDescription }}
               />
 
@@ -160,13 +165,18 @@ const PostDetail = () => {
                       {section.text && (
                         <div
                           className="prose prose-slate lg:prose-xl max-w-4xl mx-auto 
-                            prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-6 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
+                            prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-1 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
                             [&_p]:!text-[1.3rem] lg:[&_p]:!text-[1.45rem] [&_p_span]:!text-inherit [&_span]:!text-inherit
                             prose-headings:text-black prose-headings:font-bold prose-headings:mt-12 prose-headings:mb-6
                             prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-12
                             prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
                             prose-strong:text-black prose-strong:font-bold
-                            prose-ul:list-disc prose-ul:pl-6 prose-li:mb-2 break-words"
+                            prose-ul:list-disc prose-ul:pl-8 prose-ul:!mt-0 prose-ol:list-decimal prose-ol:pl-8 prose-ol:!mt-0
+                            prose-li:text-slate-600 prose-li:my-0 prose-li:text-[1.3rem] lg:prose-li:text-[1.45rem]
+                            prose-li:marker:text-slate-600 [&_li::marker]:text-[1.1rem] lg:[&_li::marker]:text-[1.2rem]
+                            [&_li]:!text-[1.3rem] lg:[&_li]:!text-[1.45rem] [&_li_span]:!text-inherit [&_li]:!pl-3
+                            [&_li_p]:!my-0 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:!mt-0 [&_ol]:!mt-0
+                            break-words"
                           dangerouslySetInnerHTML={{ __html: section.text }}
                         />
                       )}
