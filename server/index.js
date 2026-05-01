@@ -44,7 +44,7 @@ const pdfStorage = new CloudinaryStorage({
   params: {
     folder: 'velrona_uploads/pdfs',
     allowed_formats: ['pdf'],
-    resource_type: 'raw',
+    resource_type: 'image',
   },
 });
 

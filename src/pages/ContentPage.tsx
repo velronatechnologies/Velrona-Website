@@ -38,8 +38,10 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
 
   const getNativeViewerUrl = (pdfUrl: string) => {
     if (!pdfUrl) return "#";
-    // Using Google Docs viewer as it's the most compatible with Cloudinary raw links
-    return `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}`;
+    if (pdfUrl.includes('cloudinary.com')) {
+      return pdfUrl.replace('/upload/', '/upload/fl_inline/').replace('/raw/upload/', '/image/upload/') + (pdfUrl.toLowerCase().endsWith('.pdf') ? '' : '.pdf');
+    }
+    return pdfUrl;
   };
 
   useEffect(() => {

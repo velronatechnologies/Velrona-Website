@@ -334,7 +334,7 @@ const Admin = () => {
         title: formData.title,
         description: formData.description,
         image: formData.image,
-        pdf: (formData.category === "investors" || formData.category === "investor_overview") ? formData.pdf : undefined,
+        pdf: (formData.category === "investors" || formData.category === "investor_overview" || formData.category === "investor_businesses") ? formData.pdf : undefined,
         category: formData.category,
         communityType: formData.category === "community" ? formData.communityType : undefined,
         group: formData.category === "investor_overview" ? formData.group : undefined,
@@ -522,7 +522,11 @@ const Admin = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="capitalize">
-                      {editingId ? "Edit" : "New"} {formData.category} Post
+                      {editingId ? "Edit" : "New"} {
+                        formData.category === 'investor_businesses' 
+                          ? 'investor (businesses Post)' 
+                          : formData.category.replace('_', ' ')
+                      }
                       {formData.category === "community" && (
                         <span className="ml-2 normal-case text-sm text-slate-500">
                           ({formData.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"})
@@ -637,7 +641,7 @@ const Admin = () => {
                   )}
                   {formData.category === 'investor_businesses' && (
                     <div className="space-y-4 pt-4 border-t border-slate-100">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label>Grayscale Logo (for hover)</Label>
                           <div
@@ -660,6 +664,18 @@ const Admin = () => {
                             )}
                             <input type="file" id="gray-logo-upload" accept="image/*" className="hidden" onChange={handleGrayImageUpload} />
                           </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="tagline">Quarter Info (e.g. Q4FY26)</Label>
+                          <Input
+                            id="tagline"
+                            placeholder="Q4FY26"
+                            value={formData.tagline}
+                            onChange={(e) => setFormData((p) => ({ ...p, tagline: e.target.value }))}
+                            className="h-[52px]"
+                          />
+                          <p className="text-[10px] text-slate-500 italic">This shows above statistics.</p>
                         </div>
 
                         <div className="space-y-2">
@@ -805,7 +821,7 @@ const Admin = () => {
                     </div>
                   )}
 
-                  {(formData.category === "investors" || formData.category === "investor_overview") && (
+                  {(formData.category === "investors" || formData.category === "investor_overview" || formData.category === "investor_businesses") && (
                     <div className="space-y-2">
                       <Label>PDF Document</Label>
                       <div

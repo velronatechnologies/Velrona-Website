@@ -12,8 +12,10 @@ interface BusinessInfo {
   title: string;
   description: string;
   image: string;
+  pdf?: string;
   grayImage?: string;
   stats?: Stat[];
+  tagline?: string;
 }
 
 const InvestorBusinessGrid = () => {
@@ -93,15 +95,29 @@ const InvestorBusinessGrid = () => {
                   <div className="text-slate-600 text-base lg:text-lg leading-relaxed mb-6 line-clamp-3 overflow-hidden">
                     {stripHtml(business.description)}
                   </div>
-                  <button className="text-slate-900 font-bold text-base border-b-2 border-slate-200 flex items-center gap-1 mt-auto w-fit pb-1">
-                    Learn more
-                  </button>
+                  {business.pdf ? (
+                    <a 
+                      href={business.pdf.includes('cloudinary.com') 
+                        ? business.pdf.replace('/upload/', '/upload/fl_inline/').replace('/raw/upload/', '/image/upload/') + (business.pdf.toLowerCase().endsWith('.pdf') ? '' : '.pdf')
+                        : business.pdf
+                      } 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-slate-900 font-bold text-base border-b-2 border-slate-200 flex items-center gap-1 mt-auto w-fit pb-1 hover:border-slate-900 transition-colors"
+                    >
+                      Learn more
+                    </a>
+                  ) : (
+                    <button className="text-slate-900 font-bold text-base border-b-2 border-slate-200 flex items-center gap-1 mt-auto w-fit pb-1">
+                      Learn more
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Bottom Section: Stats */}
               <div className="text-base font-semibold text-slate-400 mb-4">
-                  Q4FY26
+                  {business.tagline || "Q4FY26"}
                 </div>
               <div className="mt-auto border-t-2 border-slate-200 pt-6">
                 <div className="grid grid-cols-2 gap-2">
