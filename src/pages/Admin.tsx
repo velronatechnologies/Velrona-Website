@@ -35,6 +35,7 @@ interface ContentItem {
   stats?: { label: string; value: string }[];
   grayImage?: string;
   tagline?: string;
+  order?: number;
 }
 
 const Admin = () => {
@@ -54,6 +55,7 @@ const Admin = () => {
     stats: [] as { label: string; value: string }[],
     grayImage: "",
     tagline: "",
+    order: 0,
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinUpdatingId, setPinUpdatingId] = useState<string | null>(null);
@@ -98,6 +100,7 @@ const Admin = () => {
       stats: item.stats || [],
       grayImage: item.grayImage || "",
       tagline: item.tagline || "",
+      order: item.order || 0,
     });
     // Scroll to form
     const formElement = document.querySelector('form');
@@ -116,6 +119,7 @@ const Admin = () => {
       group: "",
       publishYear: String(currentYear),
       sections: [],
+      order: 0,
     });
   };
 
@@ -344,6 +348,7 @@ const Admin = () => {
         stats: formData.category === 'investor_businesses' ? formData.stats : undefined,
         grayImage: formData.category === 'investor_businesses' ? formData.grayImage : undefined,
         tagline: formData.category === 'investor_businesses' ? formData.tagline : undefined,
+        order: formData.order,
       };
 
       const res = await fetch(url, {
@@ -366,6 +371,7 @@ const Admin = () => {
           stats: [],
           grayImage: "",
           tagline: "",
+          order: 0,
         });
         setEditingId(null);
         fetchItems();
@@ -413,6 +419,23 @@ const Admin = () => {
       toast.error("Unable to update pin status");
     } finally {
       setPinUpdatingId(null);
+    }
+  };
+
+  const handleUpdateOrder = async (id: string, newOrder: number) => {
+    try {
+      const res = await fetch(`/api/content/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: newOrder }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update order");
+
+      toast.success("Order updated");
+      fetchItems();
+    } catch (err) {
+      toast.error("Failed to update order");
     }
   };
 
@@ -588,7 +611,7 @@ const Admin = () => {
                   {formData.category !== 'investor_overview' && (
                     <div className="space-y-2">
                       <Label>Feature Image</Label>
-                      <div 
+                      <div
                         onClick={triggerFileInput}
                         className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
                         {formData.image ? (
@@ -612,31 +635,44 @@ const Admin = () => {
                       </div>
                     </div>
                   )}
-
                   {formData.category === 'investor_businesses' && (
                     <div className="space-y-4 pt-4 border-t border-slate-100">
-                      
-                      <div className="space-y-2">
-                        <Label>Grayscale Logo (for main carousel hover effect)</Label>
-                        <div 
-                          onClick={triggerGrayFileInput}
-                          className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
-                          {formData.grayImage ? (
-                            <div className="relative h-20 w-full flex items-center justify-center">
-                              <img src={formData.grayImage} alt="Gray Preview" className="h-full object-contain" />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, grayImage: "" })); }}>
-                                  <Trash2 className="w-4 h-4 mr-2" /> Remove
-                                </Button>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Grayscale Logo (for hover)</Label>
+                          <div
+                            onClick={triggerGrayFileInput}
+                            className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
+                            {formData.grayImage ? (
+                              <div className="relative h-20 w-full flex items-center justify-center">
+                                <img src={formData.grayImage} alt="Gray Preview" className="h-full object-contain" />
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, grayImage: "" })); }}>
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Upload className="w-4 h-4 text-blue-600" />
-                              <span className="text-xs font-medium text-slate-700">Upload Grayscale Logo</span>
-                            </div>
-                          )}
-                          <input type="file" id="gray-logo-upload" accept="image/*" className="hidden" onChange={handleGrayImageUpload} />
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Upload className="w-4 h-4 text-blue-600" />
+                                <span className="text-xs font-medium text-slate-700">Upload</span>
+                              </div>
+                            )}
+                            <input type="file" id="gray-logo-upload" accept="image/*" className="hidden" onChange={handleGrayImageUpload} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="order">Display Order (1, 2, 3...)</Label>
+                          <Input
+                            id="order"
+                            type="number"
+                            placeholder="Priority"
+                            value={formData.order}
+                            onChange={(e) => setFormData((p) => ({ ...p, order: parseInt(e.target.value) || 0 }))}
+                            className="h-[52px]"
+                          />
+                          <p className="text-[10px] text-slate-500 italic">Lower numbers show first.</p>
                         </div>
                       </div>
                     </div>
@@ -667,10 +703,10 @@ const Admin = () => {
                                 {section.image ? (
                                   <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-slate-200">
                                     <img src={section.image} alt="Section Preview" className="w-full h-full object-cover" />
-                                    <Button 
+                                    <Button
                                       type="button"
-                                      variant="destructive" 
-                                      size="sm" 
+                                      variant="destructive"
+                                      size="sm"
                                       className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
                                       onClick={() => setFormData(prev => ({
                                         ...prev,
@@ -682,9 +718,9 @@ const Admin = () => {
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-4">
-                                    <Input 
-                                      type="file" 
-                                      accept="image/*" 
+                                    <Input
+                                      type="file"
+                                      accept="image/*"
                                       onChange={(e) => handleSectionImageUpload(index, e)}
                                       className="cursor-pointer"
                                     />
@@ -717,10 +753,10 @@ const Admin = () => {
                     <div className="space-y-6 pt-6 border-t border-slate-200">
                       <div className="flex items-center justify-between">
                         <Label className="text-lg font-bold">Business Statistics</Label>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={addStat}
                           disabled={formData.stats.length >= 2}
                         >
@@ -731,10 +767,10 @@ const Admin = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {formData.stats.map((stat, index) => (
                           <Card key={index} className="bg-slate-50/50 relative overflow-visible border-none shadow-none bg-slate-100/50">
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
                               className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
                               onClick={() => removeStat(index)}
                             >
@@ -743,8 +779,8 @@ const Admin = () => {
                             <CardContent className="p-3 space-y-2">
                               <div className="space-y-1">
                                 <Label className="text-[10px] uppercase font-bold text-slate-500">Value (e.g. 45+)</Label>
-                                <Input 
-                                  placeholder="Value" 
+                                <Input
+                                  placeholder="Value"
                                   value={stat.value}
                                   onChange={(e) => updateStat(index, "value", e.target.value)}
                                   className="h-8 text-sm font-bold bg-white"
@@ -752,8 +788,8 @@ const Admin = () => {
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-[10px] uppercase font-bold text-slate-500">Label (e.g. Direct Farms)</Label>
-                                <Input 
-                                  placeholder="Label" 
+                                <Input
+                                  placeholder="Label"
                                   value={stat.label}
                                   onChange={(e) => updateStat(index, "label", e.target.value)}
                                   className="h-8 text-xs bg-white"
@@ -843,6 +879,31 @@ const Admin = () => {
                           </div>
                           <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
                             <Calendar className="w-3 h-3" /> {item.date}
+                            {item.order !== undefined && (
+                              <div className="ml-2 flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Order:</span>
+                                <input
+                                  type="number"
+                                  defaultValue={item.order}
+                                  onBlur={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    if (!isNaN(val) && val !== item.order) {
+                                      handleUpdateOrder(item._id, val);
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const val = parseInt((e.target as HTMLInputElement).value);
+                                      if (!isNaN(val) && val !== item.order) {
+                                        handleUpdateOrder(item._id, val);
+                                        (e.target as HTMLInputElement).blur();
+                                      }
+                                    }
+                                  }}
+                                  className="w-12 h-6 px-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                                />
+                              </div>
+                            )}
                           </p>
                           {item.category === "community" && item.communityType && (
                             <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
@@ -853,22 +914,22 @@ const Admin = () => {
                             <p className="text-[10px] uppercase tracking-wider text-blue-700 mb-2">PDF attached</p>
                           )}
                           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                             <button
-                               type="button"
-                               role="switch"
-                               aria-checked={Boolean(item.pinned)}
-                               aria-label="Toggle pin"
-                               title={item.pinned ? "Pinned" : "Pin post"}
-                               onClick={() => handleTogglePin(item._id)}
-                               disabled={pinUpdatingId === item._id}
-                               className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${item.pinned ? "bg-green-500" : "bg-slate-300"
-                                 } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
-                             >
-                               <span
-                                 className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${item.pinned ? "translate-x-5" : "translate-x-1"
-                                   }`}
-                               />
-                             </button>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={Boolean(item.pinned)}
+                              aria-label="Toggle pin"
+                              title={item.pinned ? "Pinned" : "Pin post"}
+                              onClick={() => handleTogglePin(item._id)}
+                              disabled={pinUpdatingId === item._id}
+                              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${item.pinned ? "bg-green-500" : "bg-slate-300"
+                                } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
+                            >
+                              <span
+                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${item.pinned ? "translate-x-5" : "translate-x-1"
+                                  }`}
+                              />
+                            </button>
                             <Button
                               variant="outline"
                               size="sm"

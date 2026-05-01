@@ -58,7 +58,6 @@ const InvestorBusinessGrid = () => {
           <h2 className="section-heading text-3xl font-bold text-slate-900 mb-2 inline-block relative">
             Our businesses
           </h2>
-          <div className="w-16 h-1 bg-blue-600 mt-2"></div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-12">

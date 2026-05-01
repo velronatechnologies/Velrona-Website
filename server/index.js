@@ -68,6 +68,10 @@ const contentSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  order: {
+    type: Number,
+    default: 0,
+  },
   sections: [{
     text: String,
     image: String,
@@ -136,7 +140,7 @@ app.post('/api/content', async (req, res) => {
 // Fetching ALL Content regardless of category
 app.get('/api/content/all_types', async (req, res) => {
   try {
-    const items = await Content.find({}).sort({ _id: -1 });
+    const items = await Content.find({}).sort({ order: 1, _id: -1 });
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch content' });
@@ -153,7 +157,16 @@ app.get('/api/content/:category', async (req, res) => {
       filter.communityType = req.query.communityType;
     }
 
-    const items = await Content.find(filter).sort(pinnedFirst ? { pinned: -1, _id: -1 } : { _id: -1 });
+    let sortOptions = {};
+    if (req.params.category === 'investor_businesses') {
+      sortOptions = { order: 1, _id: -1 };
+    } else if (pinnedFirst) {
+      sortOptions = { pinned: -1, _id: -1 };
+    } else {
+      sortOptions = { _id: -1 };
+    }
+
+    const items = await Content.find(filter).sort(sortOptions);
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch content' });
