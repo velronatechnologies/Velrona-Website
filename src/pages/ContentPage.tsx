@@ -16,6 +16,7 @@ interface ContentItem {
   category: "community" | "press" | "investors" | "investor_overview";
   group?: string;
   sections?: { text: string; image: string }[];
+  shortDescription?: string;
 }
 
 interface ContentPageProps {

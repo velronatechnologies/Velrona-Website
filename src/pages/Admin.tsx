@@ -36,6 +36,7 @@ interface ContentItem {
   grayImage?: string;
   tagline?: string;
   order?: number;
+  shortDescription?: string;
 }
 
 const Admin = () => {
@@ -56,6 +57,7 @@ const Admin = () => {
     grayImage: "",
     tagline: "",
     order: 0,
+    shortDescription: "",
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinUpdatingId, setPinUpdatingId] = useState<string | null>(null);
@@ -101,6 +103,7 @@ const Admin = () => {
       grayImage: item.grayImage || "",
       tagline: item.tagline || "",
       order: item.order || 0,
+      shortDescription: item.shortDescription || "",
     });
     // Scroll to form
     const formElement = document.querySelector('form');
@@ -120,6 +123,7 @@ const Admin = () => {
       publishYear: String(currentYear),
       sections: [],
       order: 0,
+      shortDescription: "",
     });
   };
 
@@ -349,6 +353,7 @@ const Admin = () => {
         grayImage: formData.category === 'investor_businesses' ? formData.grayImage : undefined,
         tagline: formData.category === 'investor_businesses' ? formData.tagline : undefined,
         order: formData.order,
+        shortDescription: formData.shortDescription,
       };
 
       const res = await fetch(url, {
@@ -372,6 +377,7 @@ const Admin = () => {
           grayImage: "",
           tagline: "",
           order: 0,
+          shortDescription: "",
         });
         setEditingId(null);
         fetchItems();
@@ -591,6 +597,18 @@ const Admin = () => {
                         placeholder="Enter heading..."
                         value={formData.title}
                         onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                  
+                  {formData.category !== 'investor_overview' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="shortDescription">Short Description (Shows on main screen)</Label>
+                      <Input
+                        id="shortDescription"
+                        placeholder="Enter short summary..."
+                        value={formData.shortDescription}
+                        onChange={(e) => setFormData((p) => ({ ...p, shortDescription: e.target.value }))}
                       />
                     </div>
                   )}

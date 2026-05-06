@@ -15,6 +15,7 @@ interface ContentItem {
   date: string;
   category: string;
   sections?: { text: string; image: string }[];
+  shortDescription?: string;
 }
 
 const PostDetail = () => {
@@ -65,7 +66,8 @@ const PostDetail = () => {
     : "";
   const normalizedDescription = (item.description || "")
     .replace(/font-size\s*:\s*[^;"']+;?/gi, "")
-    .replace(/style="\s*"/gi, "");
+    .replace(/style="\s*"/gi, "")
+    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, "");
 
   return (
     <div className="min-h-screen bg-white">
@@ -107,11 +109,11 @@ const PostDetail = () => {
             </h2>
 
             {/* Post image shown in full and constrained for comfortable reading */}
-            <div className="w-full max-w-2xl mx-auto mb-12 bg-slate-100 p-2 sm:p-3">
+            <div className="w-full max-w-4xl mx-auto mb-12">
               <img
                 src={item.image}
                 alt={item.title}
-                className="w-full h-auto object-contain"
+                className="w-full h-auto object-contain rounded-xl"
                 loading="eager"
               />
             </div>
@@ -133,7 +135,7 @@ const PostDetail = () => {
               {/* Main Content */}
               <div
                 className="prose prose-slate lg:prose-xl max-w-4xl mx-auto 
-                  prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-1 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
+                  prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mt-0 prose-p:mb-6 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
                   [&_p]:!text-[1.3rem] lg:[&_p]:!text-[1.45rem] [&_p_span]:!text-inherit [&_span]:!text-inherit
                   prose-headings:text-black prose-headings:font-bold prose-headings:mt-12 prose-headings:mb-6
                   prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-12
@@ -150,9 +152,9 @@ const PostDetail = () => {
 
               {/* Dynamic Sections */}
               {item.sections && item.sections.length > 0 && (
-                <div className="space-y-16">
+                <div className="space-y-8">
                   {item.sections.map((section, idx) => (
-                    <div key={idx} className="space-y-8">
+                    <div key={idx} className="space-y-4">
                       {section.image && (
                         <div className="w-full max-w-2xl mx-auto bg-slate-100 p-2 sm:p-3 rounded-xl shadow-sm">
                           <img
@@ -165,7 +167,7 @@ const PostDetail = () => {
                       {section.text && (
                         <div
                           className="prose prose-slate lg:prose-xl max-w-4xl mx-auto 
-                            prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mb-1 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
+                            prose-p:leading-relaxed prose-p:text-slate-600 prose-p:mt-0 prose-p:mb-6 prose-p:text-[1.3rem] lg:prose-p:text-[1.45rem]
                             [&_p]:!text-[1.3rem] lg:[&_p]:!text-[1.45rem] [&_p_span]:!text-inherit [&_span]:!text-inherit
                             prose-headings:text-black prose-headings:font-bold prose-headings:mt-12 prose-headings:mb-6
                             prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-12

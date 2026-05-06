@@ -18,6 +18,7 @@ interface CommunityItem {
   category: "community";
   communityType?: "csr" | "non-csr";
   pinned?: boolean;
+  shortDescription?: string;
 }
 
 const extractYear = (dateValue: string) => {
@@ -201,7 +202,7 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
                           {item.title}
                         </h4>
                         <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8 text-balance">
-                          {stripHtml(item.description)}
+                          {item.shortDescription || stripHtml(item.description).slice(0, 160) + (stripHtml(item.description).length > 160 ? "..." : "")}
                         </p>
                         <button
                           onClick={() => navigate(`/post/${item._id}`)}
@@ -211,13 +212,13 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
                         </button>
                       </div>
                       <div
-                        className="aspect-video bg-white rounded-3xl shadow-sm overflow-hidden border border-border cursor-pointer"
+                        className="aspect-video overflow-hidden cursor-pointer"
                         onClick={() => navigate(`/post/${item._id}`)}
                       >
                         <img
                           src={item.image}
                           alt={item.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover rounded-3xl"
                         />
                       </div>
                     </div>
