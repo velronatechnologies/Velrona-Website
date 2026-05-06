@@ -164,8 +164,8 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
                       setActiveYear(year);
                     }}
                     className={`text-base sm:text-lg font-medium transition-all ${activeYear === year
-                        ? "text-accent scale-110"
-                        : "text-muted-foreground hover:text-foreground"
+                      ? "text-accent scale-110"
+                      : "text-muted-foreground hover:text-foreground"
                       }`}
                   >
                     {year}
@@ -206,7 +206,7 @@ const InitiativesPage = ({ type }: InitiativesPageProps) => {
                         </p>
                         <button
                           onClick={() => navigate(`/post/${item._id}`)}
-                          className="flex items-center gap-2 text-accent font-semibold group"
+                          className="flex items-center gap-2 text-black font-semibold group"
                         >
                           Learn more <ChevronRight size={18} className="transition-transform group-hover:translate-x-1" />
                         </button>
