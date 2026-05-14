@@ -39,9 +39,9 @@ const HeroSection = () => {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="text-center max-w-6xl"
         >
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light text-foreground tracking-tight">
-            <div className="mb-8">Velrona isn't just a company.</div>
-            <div>It's a vision with purpose.</div>
+          <h1 className="text-[7.5vw] sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light text-foreground tracking-tight leading-[1.1]">
+            <div className="mb-4 sm:mb-8 whitespace-nowrap">Velrona isn't just a company.</div>
+            <div className="whitespace-nowrap">It's a vision with purpose.</div>
           </h1>
         </motion.div>
       </div>
