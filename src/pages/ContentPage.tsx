@@ -110,7 +110,11 @@ const ContentPage = ({ title, category, description }: ContentPageProps) => {
                     const isHeading = entry === "Q3FY26 results";
                     // Find the matching item from the database
                     const dbItem = findItemByTitle(entry);
-                    const pdfUrl = dbItem?.pdf;
+                    // Fallback to local public PDF for "Presentation" if no DB entry
+                    const localFallbacks: Record<string, string> = {
+                      "Presentation": "/Presentation%20doc/Velrona%20Group%20Company%20Overview%202026.pdf",
+                    };
+                    const pdfUrl = dbItem?.pdf || localFallbacks[entry];
 
                     return (
                       <div
