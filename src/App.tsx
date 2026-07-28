@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TermsConditions from "./pages/TermsConditions";
@@ -26,6 +26,7 @@ const App = () => (
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/culture" element={<Culture />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/admin" element={<Navigate to="/admin@velrona" replace />} />
           <Route path="/admin@velrona" element={<Admin />} />
           <Route path="/community/csr" element={<InitiativesPage type="csr" />} />
           <Route path="/community/non-csr" element={<InitiativesPage type="non-csr" />} />
