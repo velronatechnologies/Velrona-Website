@@ -87,6 +87,28 @@ const contentSchema = new mongoose.Schema({
 
 const Content = mongoose.model('Content', contentSchema);
 
+// Signature Doc Schema
+const signatureDocSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  pdfUrl: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const SignatureDoc = mongoose.model('SignatureDoc', signatureDocSchema);
+
+// Signature Submission Schema
+const signatureSubmissionSchema = new mongoose.Schema({
+  docId: { type: mongoose.Schema.Types.ObjectId, ref: 'SignatureDoc', required: true },
+  fullName: { type: String, required: true },
+  email: { type: String, required: true },
+  dateSigned: { type: String, required: true },
+  signatureData: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const SignatureSubmission = mongoose.model('SignatureSubmission', signatureSubmissionSchema);
+
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID || 'admin@velrona';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Velrona@dharun';
 
@@ -255,6 +277,84 @@ app.delete('/api/content/:id', async (req, res) => {
     res.json({ message: 'Content deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete content' });
+  }
+});
+
+// Create Signature Doc (Admin)
+app.post('/api/signature-docs', async (req, res) => {
+  try {
+    const { title, description, pdfUrl } = req.body;
+    if (!title || !pdfUrl) {
+      return res.status(400).json({ error: 'Title and PDF document URL are required' });
+    }
+    const newDoc = new SignatureDoc({ title, description, pdfUrl });
+    await newDoc.save();
+    res.status(201).json(newDoc);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create signature document' });
+  }
+});
+
+// Fetch all Signature Docs (Admin)
+app.get('/api/signature-docs', async (req, res) => {
+  try {
+    const docs = await SignatureDoc.find({}).sort({ _id: -1 });
+    res.json(docs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch signature documents' });
+  }
+});
+
+// Fetch single Signature Doc by ID (Public Investor Sign Page)
+app.get('/api/signature-docs/:id', async (req, res) => {
+  try {
+    const doc = await SignatureDoc.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    res.json(doc);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch document' });
+  }
+});
+
+// Delete Signature Doc (Admin)
+app.delete('/api/signature-docs/:id', async (req, res) => {
+  try {
+    await SignatureDoc.findByIdAndDelete(req.params.id);
+    await SignatureSubmission.deleteMany({ docId: req.params.id });
+    res.json({ message: 'Document and signatures deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete document' });
+  }
+});
+
+// Submit Investor Signature (Public Investor Sign Page)
+app.post('/api/signature-submissions', async (req, res) => {
+  try {
+    const { docId, fullName, email, dateSigned, signatureData } = req.body;
+    if (!docId || !fullName || !email || !signatureData) {
+      return res.status(400).json({ error: 'All fields including signature are required' });
+    }
+    const submission = new SignatureSubmission({
+      docId,
+      fullName,
+      email,
+      dateSigned: dateSigned || new Date().toLocaleDateString('en-GB'),
+      signatureData,
+    });
+    await submission.save();
+    res.status(201).json(submission);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save signature submission' });
+  }
+});
+
+// Fetch Submissions for a Document (Admin)
+app.get('/api/signature-submissions/doc/:docId', async (req, res) => {
+  try {
+    const submissions = await SignatureSubmission.find({ docId: req.params.docId }).sort({ _id: -1 });
+    res.json(submissions);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch submissions' });
   }
 });
 

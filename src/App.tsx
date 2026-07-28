@@ -12,6 +12,7 @@ import Admin from "./pages/Admin";
 import ContentPage from "./pages/ContentPage";
 import InitiativesPage from "./pages/InitiativesPage";
 import PostDetail from "./pages/PostDetail";
+import InvestorSignPage from "./pages/InvestorSignPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,8 @@ const App = () => (
           <Route path="/press-release" element={<ContentPage title="Press Release" category="press" description="Making an Impact: Velrona Group’s Commitment to Create a Better World Together" />} />
           <Route path="/investors" element={<ContentPage title="Investors" category="investors" />} />
           <Route path="/post/:id" element={<PostDetail />} />
+          <Route path="/sign/:id" element={<InvestorSignPage />} />
+          <Route path="/investor-sign/:id" element={<InvestorSignPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar, Pin, FileText, Lock, User, Eye, EyeOff, LogOut, ShieldCheck, KeyRound } from "lucide-react";
+import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar, Pin, FileText, Lock, User, Eye, EyeOff, LogOut, ShieldCheck, KeyRound, Copy, ExternalLink, PenTool, CheckCircle, Link2 } from "lucide-react";
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -27,7 +27,7 @@ interface ContentItem {
   image: string;
   pdf?: string;
   date: string;
-  category: "community" | "press" | "investors" | "investor_overview" | "investor_businesses";
+  category: "community" | "press" | "investors" | "investor_overview" | "investor_businesses" | "signature";
   communityType?: "csr" | "non-csr";
   group?: string;
   pinned?: boolean;
@@ -37,6 +37,24 @@ interface ContentItem {
   tagline?: string;
   order?: number;
   shortDescription?: string;
+}
+
+interface SignatureDocItem {
+  _id: string;
+  title: string;
+  description?: string;
+  pdfUrl: string;
+  createdAt: string;
+}
+
+interface SignatureSubmissionItem {
+  _id: string;
+  docId: string;
+  fullName: string;
+  email: string;
+  dateSigned: string;
+  signatureData: string;
+  createdAt: string;
 }
 
 const Admin = () => {
@@ -78,6 +96,116 @@ const Admin = () => {
   const [pinUpdatingId, setPinUpdatingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Signature Documents State
+  const [sigDocs, setSigDocs] = useState<SignatureDocItem[]>([]);
+  const [sigDocTitle, setSigDocTitle] = useState("");
+  const [sigDocDesc, setSigDocDesc] = useState("");
+  const [sigDocPdf, setSigDocPdf] = useState("");
+  const [isUploadingSigPdf, setIsUploadingSigPdf] = useState(false);
+  const [isCreatingSigDoc, setIsCreatingSigDoc] = useState(false);
+  const [selectedDocSubmissions, setSelectedDocSubmissions] = useState<{ [docId: string]: SignatureSubmissionItem[] }>({});
+  const [viewingSubmissionsDocId, setViewingSubmissionsDocId] = useState<string | null>(null);
+  const sigPdfInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchSignatureDocs = async () => {
+    try {
+      const res = await fetch("/api/signature-docs");
+      if (res.ok) {
+        const data = await res.json();
+        setSigDocs(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch signature docs:", err);
+    }
+  };
+
+  const handleUploadSigPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Please upload a valid PDF file.");
+      return;
+    }
+    setIsUploadingSigPdf(true);
+    const data = new FormData();
+    data.append("file", file);
+    try {
+      const res = await fetch("/api/upload/pdf", {
+        method: "POST",
+        body: data,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const json = await res.json();
+      if (json.secure_url) {
+        setSigDocPdf(json.secure_url);
+        toast.success("PDF uploaded successfully!");
+      }
+    } catch (err) {
+      toast.error("Failed to upload PDF.");
+    } finally {
+      setIsUploadingSigPdf(false);
+    }
+  };
+
+  const handleCreateSigDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sigDocTitle.trim() || !sigDocPdf) {
+      toast.error("Please provide a document title and upload a PDF document.");
+      return;
+    }
+    setIsCreatingSigDoc(true);
+    try {
+      const res = await fetch("/api/signature-docs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: sigDocTitle.trim(),
+          description: sigDocDesc.trim(),
+          pdfUrl: sigDocPdf,
+        }),
+      });
+      if (res.ok) {
+        toast.success("Signature document created successfully!");
+        setSigDocTitle("");
+        setSigDocDesc("");
+        setSigDocPdf("");
+        fetchSignatureDocs();
+      } else {
+        toast.error("Failed to create document.");
+      }
+    } catch (err) {
+      toast.error("An error occurred while creating document.");
+    } finally {
+      setIsCreatingSigDoc(false);
+    }
+  };
+
+  const handleDeleteSigDoc = async (docId: string) => {
+    if (!confirm("Are you sure you want to delete this document and all its received signatures?")) return;
+    try {
+      const res = await fetch(`/api/signature-docs/${docId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Document deleted!");
+        fetchSignatureDocs();
+      }
+    } catch (err) {
+      toast.error("Failed to delete document.");
+    }
+  };
+
+  const fetchSubmissionsForDoc = async (docId: string) => {
+    try {
+      const res = await fetch(`/api/signature-submissions/doc/${docId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedDocSubmissions(prev => ({ ...prev, [docId]: data }));
+        setViewingSubmissionsDocId(docId);
+      }
+    } catch (err) {
+      toast.error("Failed to fetch submissions");
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +286,7 @@ const Admin = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchItems();
+      fetchSignatureDocs();
     }
   }, [formData.category, formData.communityType, isAuthenticated]);
 
@@ -689,12 +818,13 @@ const Admin = () => {
           </div>
 
         <Tabs defaultValue="community" className="w-full" onValueChange={(v) => setFormData(p => ({ ...p, category: v as any }))}>
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-8">
             <TabsTrigger value="community">Community</TabsTrigger>
             <TabsTrigger value="press">Press Release</TabsTrigger>
             <TabsTrigger value="investors">Investors</TabsTrigger>
             <TabsTrigger value="investor_overview">Investor Resources</TabsTrigger>
             <TabsTrigger value="investor_businesses">Business Cards</TabsTrigger>
+            <TabsTrigger value="signature">Investor Signatures</TabsTrigger>
           </TabsList>
 
           {formData.category === "community" && (
@@ -716,7 +846,233 @@ const Admin = () => {
             </div>
           )}
 
-          <div className="grid lg:grid-cols-5 gap-8 items-start">
+          {formData.category === "signature" ? (
+            <div className="grid lg:grid-cols-5 gap-8 items-start">
+              {/* Left Column: Create New Signature Document */}
+              <Card className="lg:col-span-2 shadow-sm border-slate-200">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-slate-900">New Investor Signature Doc</CardTitle>
+                  <CardDescription>Upload a PDF document and generate a shareable signature link for investors.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleCreateSigDoc} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-600 uppercase">Document Title *</Label>
+                      <Input
+                        placeholder="e.g. Investor Term Sheet & Agreement"
+                        value={sigDocTitle}
+                        onChange={(e) => setSigDocTitle(e.target.value)}
+                        required
+                        className="rounded-xl"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-600 uppercase">Description / Instructions</Label>
+                      <textarea
+                        placeholder="Optional notes or instructions for the investor..."
+                        value={sigDocDesc}
+                        onChange={(e) => setSigDocDesc(e.target.value)}
+                        rows={3}
+                        className="w-full p-3 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-950"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-600 uppercase">Upload PDF Document *</Label>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        ref={sigPdfInputRef}
+                        onChange={handleUploadSigPdf}
+                        className="hidden"
+                      />
+                      <div className="flex items-center gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => sigPdfInputRef.current?.click()}
+                          disabled={isUploadingSigPdf}
+                          className="w-full rounded-xl border-dashed border-2 flex items-center justify-center gap-2 py-6 text-slate-600 hover:text-slate-900 hover:border-slate-400"
+                        >
+                          {isUploadingSigPdf ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" /> Uploading PDF...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-5 h-5 text-blue-600" />
+                              {sigDocPdf ? "Change PDF File" : "Choose PDF File"}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      {sigDocPdf && (
+                        <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+                          <CheckCircle className="w-3.5 h-3.5" /> PDF Ready for Publishing
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={isCreatingSigDoc || !sigDocPdf || !sigDocTitle.trim()}
+                      className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl py-3 mt-4 text-xs uppercase tracking-wider shadow-md"
+                    >
+                      {isCreatingSigDoc ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Publishing...
+                        </span>
+                      ) : (
+                        "Publish & Generate Link"
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Right Column: Published Signature Documents List */}
+              <Card className="lg:col-span-3 shadow-sm border-slate-200">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-slate-900">Active Signature Documents ({sigDocs.length})</CardTitle>
+                    <CardDescription>Share generated links with investors to receive digital signatures.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {sigDocs.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
+                      <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500 font-medium text-sm">No signature documents published yet.</p>
+                      <p className="text-slate-400 text-xs mt-1">Upload a PDF on the left to generate your first link.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sigDocs.map((sDoc) => {
+                        const shareUrl = `${window.location.origin}/sign/${sDoc._id}`;
+                        const submissions = selectedDocSubmissions[sDoc._id] || [];
+                        const isViewing = viewingSubmissionsDocId === sDoc._id;
+
+                        return (
+                          <div key={sDoc._id} className="border border-slate-200 rounded-2xl p-5 bg-white shadow-sm hover:border-slate-300 transition-all">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                              <div>
+                                <h4 className="font-bold text-slate-900 text-base uppercase">{sDoc.title}</h4>
+                                {sDoc.description && (
+                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{sDoc.description}</p>
+                                )}
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteSigDoc(sDoc._id)}
+                                className="self-start sm:self-center rounded-lg text-xs"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                              </Button>
+                            </div>
+
+                            {/* Shareable Link Box */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 overflow-hidden text-xs text-slate-600 font-mono">
+                                <Link2 className="w-4 h-4 text-blue-600 shrink-0" />
+                                <span className="truncate">{shareUrl}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(shareUrl);
+                                    toast.success("Signature Link copied to clipboard!");
+                                  }}
+                                  className="rounded-lg text-xs bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                                >
+                                  <Copy className="w-3.5 h-3.5 mr-1 text-slate-500" /> Copy Link
+                                </Button>
+                                <a
+                                  href={shareUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
+                                </a>
+                              </div>
+                            </div>
+
+                            {/* Submissions Toggle */}
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (isViewing) {
+                                    setViewingSubmissionsDocId(null);
+                                  } else {
+                                    fetchSubmissionsForDoc(sDoc._id);
+                                  }
+                                }}
+                                className="text-xs font-bold text-slate-700 hover:text-slate-900 p-0 hover:bg-transparent"
+                              >
+                                <PenTool className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                                {isViewing ? "Hide Signatures" : `View Signed Submissions (${submissions.length || 'Click to load'})`}
+                              </Button>
+
+                              <a
+                                href={sDoc.pdfUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs text-slate-400 hover:text-slate-600 font-medium"
+                              >
+                                View Original PDF
+                              </a>
+                            </div>
+
+                            {/* Submissions Drawer / List */}
+                            {isViewing && (
+                              <div className="mt-4 pt-3 border-t border-slate-200 space-y-3">
+                                <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                  Received Signatures ({submissions.length})
+                                </h5>
+
+                                {submissions.length === 0 ? (
+                                  <p className="text-xs text-slate-400 italic">No investor signatures received yet for this document.</p>
+                                ) : (
+                                  <div className="grid grid-cols-1 gap-3">
+                                    {submissions.map((sub) => (
+                                      <div key={sub._id} className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                          <h6 className="font-bold text-slate-900 text-sm">{sub.fullName}</h6>
+                                          <p className="text-xs text-slate-500 font-mono">{sub.email}</p>
+                                          <p className="text-[11px] text-slate-400 mt-1">Signed on: {sub.dateSigned}</p>
+                                        </div>
+
+                                        {/* Signature Preview */}
+                                        <div className="bg-white border border-slate-200 rounded-lg p-2 max-w-[200px] shrink-0 text-center">
+                                          <span className="text-[9px] font-bold text-slate-400 block mb-1 uppercase">Signature Image</span>
+                                          <img
+                                            src={sub.signatureData}
+                                            alt={`Signature of ${sub.fullName}`}
+                                            className="h-12 w-auto mx-auto object-contain"
+                                          />
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-5 gap-8 items-start">
             <Card className="lg:col-span-3">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -1187,6 +1543,7 @@ const Admin = () => {
               </div>
             </div>
           </div>
+          )}
         </Tabs>
       </div>
     </div>
