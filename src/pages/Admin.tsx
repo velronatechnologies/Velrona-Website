@@ -41,13 +41,21 @@ interface ContentItem {
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem("velrona_admin_auth") === "true";
+    return sessionStorage.getItem("velrona_admin_auth") === "true";
   });
   const [loginUserId, setLoginUserId] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState("");
+
+  useEffect(() => {
+    // Clear any legacy localStorage flags from earlier browser sessions
+    if (localStorage.getItem("velrona_admin_auth")) {
+      localStorage.removeItem("velrona_admin_auth");
+      localStorage.removeItem("velrona_admin_token");
+    }
+  }, []);
 
   const [isUploading, setIsUploading] = useState(false);
   const [publishedItems, setPublishedItems] = useState<ContentItem[]>([]);
@@ -78,25 +86,28 @@ const Admin = () => {
     setIsLoggingIn(true);
     setLoginError("");
 
+    const cleanUserId = loginUserId.trim();
+    const cleanPassword = loginPassword.trim();
+
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: loginUserId, password: loginPassword }),
+        body: JSON.stringify({ userId: cleanUserId, password: cleanPassword }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
-        localStorage.setItem("velrona_admin_auth", "true");
+        sessionStorage.setItem("velrona_admin_auth", "true");
         if (data.token) {
-          localStorage.setItem("velrona_admin_token", data.token);
+          sessionStorage.setItem("velrona_admin_token", data.token);
         }
         setIsAuthenticated(true);
         toast.success("Welcome to Admin Dashboard!");
       } else {
-        if (loginUserId === "admin@velrona" && loginPassword === "Velrona@dharun") {
-          localStorage.setItem("velrona_admin_auth", "true");
+        if (cleanUserId === "admin@velrona" && cleanPassword === "Velrona@dharun") {
+          sessionStorage.setItem("velrona_admin_auth", "true");
           setIsAuthenticated(true);
           toast.success("Welcome to Admin Dashboard!");
         } else {
@@ -105,8 +116,8 @@ const Admin = () => {
         }
       }
     } catch (err) {
-      if (loginUserId === "admin@velrona" && loginPassword === "Velrona@dharun") {
-        localStorage.setItem("velrona_admin_auth", "true");
+      if (cleanUserId === "admin@velrona" && cleanPassword === "Velrona@dharun") {
+        sessionStorage.setItem("velrona_admin_auth", "true");
         setIsAuthenticated(true);
         toast.success("Welcome to Admin Dashboard!");
       } else {
@@ -119,6 +130,8 @@ const Admin = () => {
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem("velrona_admin_auth");
+    sessionStorage.removeItem("velrona_admin_token");
     localStorage.removeItem("velrona_admin_auth");
     localStorage.removeItem("velrona_admin_token");
     setIsAuthenticated(false);

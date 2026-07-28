@@ -92,7 +92,9 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Velrona@dharun';
 
 // Admin Login Endpoint
 app.post('/api/admin/login', (req, res) => {
-  const { userId, password } = req.body;
+  const userId = (req.body.userId || '').trim();
+  const password = (req.body.password || '').trim();
+
   if (!userId || !password) {
     return res.status(400).json({ error: 'User ID and password are required' });
   }
