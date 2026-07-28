@@ -15,7 +15,7 @@ const footerLinks = {
     { label: "Investors", href: "/investors" },
   ],
   contact: [
-    { label: "Contact", href: "/contact" },
+    { label: "Contacts", href: "/contact" },
   ],
 };
 
