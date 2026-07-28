@@ -27,6 +27,7 @@ const InvestorSignPage = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [submittedSignedPdfUrl, setSubmittedSignedPdfUrl] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [dateSigned, setDateSigned] = useState(() => {
@@ -169,6 +170,10 @@ const InvestorSignPage = () => {
         throw new Error("Failed to submit signature.");
       }
 
+      const json = await res.json().catch(() => ({}));
+      if (json.signedPdfUrl) {
+        setSubmittedSignedPdfUrl(json.signedPdfUrl);
+      }
       setIsSubmitted(true);
       setIsModalOpen(false);
       toast.success("Signature submitted successfully!");
@@ -245,7 +250,17 @@ const InvestorSignPage = () => {
               <div className="inline-block bg-white border border-emerald-200 rounded-xl px-4 py-2 text-xs font-mono text-emerald-800 mb-6">
                 Signed on: {dateSigned} • Email: {email}
               </div>
-              <div>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {submittedSignedPdfUrl && (
+                  <a
+                    href={submittedSignedPdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-all shadow-sm"
+                  >
+                    <FileText className="w-4 h-4" /> View Stamped Signed PDF
+                  </a>
+                )}
                 <Button variant="outline" className="rounded-xl border-emerald-300 text-emerald-800 hover:bg-emerald-100" onClick={() => window.location.href = "/"}>
                   Return to Main Website
                 </Button>

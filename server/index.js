@@ -207,7 +207,7 @@ app.post('/api/upload/pdf', (req, res) => {
       console.warn('Cloudinary upload failed, falling back to local server storage:', cErr?.message || cErr);
     }
 
-    // 2. Fallback: Save to Local Server Storage (/uploads/pdfs/)
+    // 2. Fallback: Save to Local Server Storage or Data URI (for serverless environments)
     try {
       const uploadsDir = path.join(__dirname, 'uploads/pdfs');
       if (!fs.existsSync(uploadsDir)) {
@@ -221,8 +221,10 @@ app.post('/api/upload/pdf', (req, res) => {
       console.log('PDF successfully saved to local server disk:', localUrl);
       return res.json({ secure_url: localUrl });
     } catch (diskErr) {
-      console.error('Local storage write error:', diskErr);
-      return res.status(500).json({ error: 'Failed to process PDF upload file' });
+      console.warn('Disk write failed (serverless environment), returning Data URI fallback:', diskErr?.message);
+      const base64Pdf = req.file.buffer.toString('base64');
+      const dataUri = `data:application/pdf;base64,${base64Pdf}`;
+      return res.json({ secure_url: dataUri });
     }
   });
 });
@@ -390,7 +392,10 @@ app.post('/api/signature-submissions', async (req, res) => {
     try {
       // 1. Fetch original PDF bytes
       let pdfBytes;
-      if (doc.pdfUrl.startsWith('/uploads/')) {
+      if (doc.pdfUrl.startsWith('data:application/pdf;base64,')) {
+        const base64Str = doc.pdfUrl.replace(/^data:application\/pdf;base64,/, '');
+        pdfBytes = new Uint8Array(Buffer.from(base64Str, 'base64'));
+      } else if (doc.pdfUrl.startsWith('/uploads/')) {
         const localPath = path.join(__dirname, doc.pdfUrl.replace(/^\/uploads\//, 'uploads/'));
         if (fs.existsSync(localPath)) {
           pdfBytes = fs.readFileSync(localPath);
@@ -404,87 +409,134 @@ app.post('/api/signature-submissions', async (req, res) => {
       }
 
       if (pdfBytes) {
-        // 2. Load PDF with pdf-lib
+        // 2. Load PDF with pdf-lib & add dedicated Signature Certificate Page at the end
         const pdfDoc = await PDFDocument.load(pdfBytes);
-        const pages = pdfDoc.getPages();
-        const lastPage = pages[pages.length - 1];
-        const { width } = lastPage.getSize();
-
-        // 3. Embed drawn signature PNG
-        const signatureImageBytes = Buffer.from(signatureData.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-        const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
-        const sigDims = signatureImage.scale(0.35);
+        
+        // Add a fresh, formal signature certificate page at the end of the document
+        const sigPage = pdfDoc.addPage([595, 842]);
+        const { width, height } = sigPage.getSize();
 
         const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-        // 4. Draw Official Signature Stamp Box on bottom of page
-        const boxHeight = 90;
-        const boxY = 25;
-        const boxMargin = 30;
-        const boxWidth = width - (boxMargin * 2);
+        // 3. Embed drawn signature PNG
+        const signatureImageBytes = Buffer.from(signatureData.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+        const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
+        const sigDims = signatureImage.scale(0.5);
 
-        lastPage.drawRectangle({
-          x: boxMargin,
-          y: boxY,
-          width: boxWidth,
-          height: boxHeight,
-          color: rgb(0.97, 0.98, 0.99),
-          borderColor: rgb(0.8, 0.85, 0.9),
-          borderWidth: 1,
+        // Header Banner
+        sigPage.drawRectangle({
+          x: 40,
+          y: height - 100,
+          width: width - 80,
+          height: 60,
+          color: rgb(0.06, 0.09, 0.16),
         });
 
-        lastPage.drawText('OFFICIAL DIGITAL SIGNATURE & VERIFICATION', {
-          x: boxMargin + 15,
-          y: boxY + boxHeight - 18,
-          size: 9,
+        sigPage.drawText('VELRONA GROUP - DIGITAL SIGNATURE CERTIFICATE', {
+          x: 60,
+          y: height - 65,
+          size: 12,
           font: helveticaBold,
-          color: rgb(0.1, 0.4, 0.8),
+          color: rgb(1, 1, 1),
         });
 
-        lastPage.drawText(`Signed By: ${fullName}`, {
-          x: boxMargin + 15,
-          y: boxY + boxHeight - 35,
+        sigPage.drawText('Official Investor Verification Document', {
+          x: 60,
+          y: height - 85,
           size: 10,
+          font: helvetica,
+          color: rgb(0.8, 0.85, 0.9),
+        });
+
+        // Details Container Box
+        const cardY = height - 380;
+        sigPage.drawRectangle({
+          x: 40,
+          y: cardY,
+          width: width - 80,
+          height: 250,
+          color: rgb(0.97, 0.98, 0.99),
+          borderColor: rgb(0.85, 0.88, 0.92),
+          borderWidth: 1.5,
+        });
+
+        // Certificate Information Rows
+        sigPage.drawText(`Document Title: ${doc.title}`, {
+          x: 65,
+          y: cardY + 215,
+          size: 12,
           font: helveticaBold,
           color: rgb(0.06, 0.09, 0.16),
         });
 
-        lastPage.drawText(`Email: ${email}`, {
-          x: boxMargin + 15,
-          y: boxY + boxHeight - 50,
-          size: 9,
+        sigPage.drawText(`Signatory Name: ${fullName}`, {
+          x: 65,
+          y: cardY + 185,
+          size: 11,
+          font: helveticaBold,
+          color: rgb(0.1, 0.15, 0.25),
+        });
+
+        sigPage.drawText(`Signatory Email: ${email}`, {
+          x: 65,
+          y: cardY + 160,
+          size: 10,
           font: helvetica,
           color: rgb(0.3, 0.35, 0.4),
         });
 
-        lastPage.drawText(`Date Signed: ${dateSigned || new Date().toLocaleDateString('en-GB')}`, {
-          x: boxMargin + 15,
-          y: boxY + boxHeight - 65,
-          size: 9,
+        sigPage.drawText(`Date Signed: ${dateSigned || new Date().toLocaleDateString('en-GB')}`, {
+          x: 65,
+          y: cardY + 135,
+          size: 10,
           font: helvetica,
           color: rgb(0.3, 0.35, 0.4),
         });
 
-        lastPage.drawImage(signatureImage, {
-          x: boxMargin + boxWidth - Math.min(sigDims.width, 180) - 20,
-          y: boxY + 12,
-          width: Math.min(sigDims.width, 180),
-          height: Math.min(sigDims.height, 60),
+        sigPage.drawText('Status: VERIFIED & LEGALLY BINDING DIGITAL SIGNATURE', {
+          x: 65,
+          y: cardY + 105,
+          size: 10,
+          font: helveticaBold,
+          color: rgb(0.05, 0.6, 0.3),
+        });
+
+        // Draw Drawn Signature PNG Box
+        sigPage.drawText('Investor Signature:', {
+          x: 65,
+          y: cardY + 70,
+          size: 10,
+          font: helveticaBold,
+          color: rgb(0.3, 0.35, 0.4),
+        });
+
+        sigPage.drawImage(signatureImage, {
+          x: 180,
+          y: cardY + 20,
+          width: Math.min(sigDims.width, 220),
+          height: Math.min(sigDims.height, 70),
         });
 
         // 5. Save stamped PDF
         const modifiedPdfBytes = await pdfDoc.save();
-        const uploadsDir = path.join(__dirname, 'uploads/pdfs');
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        const signedFilename = `signed_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`;
-        const signedFilePath = path.join(uploadsDir, signedFilename);
-        fs.writeFileSync(signedFilePath, modifiedPdfBytes);
 
-        signedPdfUrl = `/uploads/pdfs/${signedFilename}`;
-        console.log('Successfully created stamped signed PDF:', signedPdfUrl);
+        try {
+          const uploadsDir = path.join(__dirname, 'uploads/pdfs');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const signedFilename = `signed_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`;
+          const signedFilePath = path.join(uploadsDir, signedFilename);
+          fs.writeFileSync(signedFilePath, modifiedPdfBytes);
+          signedPdfUrl = `/uploads/pdfs/${signedFilename}`;
+        } catch (fileErr) {
+          console.warn('Serverless environment file write, returning Data URI for signed PDF:', fileErr?.message);
+          const base64Signed = Buffer.from(modifiedPdfBytes).toString('base64');
+          signedPdfUrl = `data:application/pdf;base64,${base64Signed}`;
+        }
+
+        console.log('Successfully created stamped signed PDF Certificate!');
       }
     } catch (stampErr) {
       console.error('PDF Signature Stamping error:', stampErr);
