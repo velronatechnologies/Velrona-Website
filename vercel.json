@@ -17,6 +17,10 @@
       "destination": "server/index.js"
     },
     {
+      "source": "/uploads/(.*)",
+      "destination": "server/index.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -54,6 +54,7 @@ interface SignatureSubmissionItem {
   email: string;
   dateSigned: string;
   signatureData: string;
+  signedPdfUrl?: string;
   createdAt: string;
 }
 
@@ -123,26 +124,26 @@ const Admin = () => {
   const handleUploadSigPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.type !== "application/pdf") {
-      toast.error("Please upload a valid PDF file.");
-      return;
-    }
+
     setIsUploadingSigPdf(true);
-    const data = new FormData();
-    data.append("file", file);
     try {
+      const data = new FormData();
+      data.append("file", file);
       const res = await fetch("/api/upload/pdf", {
         method: "POST",
         body: data,
       });
-      if (!res.ok) throw new Error("Upload failed");
-      const json = await res.json();
-      if (json.secure_url) {
+
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.secure_url) {
         setSigDocPdf(json.secure_url);
         toast.success("PDF uploaded successfully!");
+      } else {
+        throw new Error(json.error || "Failed to upload PDF file.");
       }
-    } catch (err) {
-      toast.error("Failed to upload PDF.");
+    } catch (err: any) {
+      console.error("PDF upload error:", err);
+      toast.error(err.message || "Failed to upload PDF.");
     } finally {
       setIsUploadingSigPdf(false);
     }
@@ -799,23 +800,23 @@ const Admin = () => {
         }
       `}</style>
       <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-border">
-            <div>
-              <h1 className="text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight uppercase">Admin Dashboard</h1>
-              <p className="text-muted-foreground text-sm mt-1">Manage website content, press releases, CSR & business cards.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" /> Logged in as Admin
-              </span>
-              <Button variant="outline" size="sm" onClick={() => window.location.href = "/"} className="rounded-xl font-medium">
-                View Site
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleLogout} className="rounded-xl font-medium flex items-center gap-1.5">
-                <LogOut className="w-3.5 h-3.5" /> Logout
-              </Button>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-border">
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight uppercase">Admin Dashboard</h1>
+            <p className="text-muted-foreground text-sm mt-1">Manage website content, press releases, CSR & business cards.</p>
           </div>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" /> Logged in as Admin
+            </span>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/"} className="rounded-xl font-medium">
+              View Site
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleLogout} className="rounded-xl font-medium flex items-center gap-1.5">
+              <LogOut className="w-3.5 h-3.5" /> Logout
+            </Button>
+          </div>
+        </div>
 
         <Tabs defaultValue="community" className="w-full" onValueChange={(v) => setFormData(p => ({ ...p, category: v as any }))}>
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-8">
@@ -1046,6 +1047,17 @@ const Admin = () => {
                                           <h6 className="font-bold text-slate-900 text-sm">{sub.fullName}</h6>
                                           <p className="text-xs text-slate-500 font-mono">{sub.email}</p>
                                           <p className="text-[11px] text-slate-400 mt-1">Signed on: {sub.dateSigned}</p>
+
+                                          {sub.signedPdfUrl && (
+                                            <a
+                                              href={sub.signedPdfUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                                            >
+                                              <FileText className="w-3.5 h-3.5" /> View Stamped PDF Document
+                                            </a>
+                                          )}
                                         </div>
 
                                         {/* Signature Preview */}
@@ -1073,476 +1085,476 @@ const Admin = () => {
             </div>
           ) : (
             <div className="grid lg:grid-cols-5 gap-8 items-start">
-            <Card className="lg:col-span-3">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="capitalize">
-                      {editingId ? "Edit" : "New"} {
-                        formData.category === 'investor_businesses' 
-                          ? 'investor (businesses Post)' 
-                          : formData.category.replace('_', ' ')
-                      }
-                      {formData.category === "community" && (
-                        <span className="ml-2 normal-case text-sm text-slate-500">
-                          ({formData.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"})
-                        </span>
-                      )}
-                    </CardTitle>
-                    <CardDescription>
-                      {editingId ? "Update existing content." : "Publish new content to the website."}
-                    </CardDescription>
+              <Card className="lg:col-span-3">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="capitalize">
+                        {editingId ? "Edit" : "New"} {
+                          formData.category === 'investor_businesses'
+                            ? 'investor (businesses Post)'
+                            : formData.category.replace('_', ' ')
+                        }
+                        {formData.category === "community" && (
+                          <span className="ml-2 normal-case text-sm text-slate-500">
+                            ({formData.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"})
+                          </span>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        {editingId ? "Update existing content." : "Publish new content to the website."}
+                      </CardDescription>
+                    </div>
+                    {editingId && (
+                      <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                        Cancel Edit
+                      </Button>
+                    )}
                   </div>
-                  {editingId && (
-                    <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                      Cancel Edit
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {formData.category === "community" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="publishYear">Publish Year</Label>
-                      <select
-                        id="publishYear"
-                        value={formData.publishYear}
-                        onChange={(e) => setFormData((p) => ({ ...p, publishYear: e.target.value }))}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                      >
-                        {[currentYear + 1, currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map((year) => (
-                          <option key={year} value={String(year)}>
-                            {year}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {formData.category === "community" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="publishYear">Publish Year</Label>
+                        <select
+                          id="publishYear"
+                          value={formData.publishYear}
+                          onChange={(e) => setFormData((p) => ({ ...p, publishYear: e.target.value }))}
+                          className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          {[currentYear + 1, currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map((year) => (
+                            <option key={year} value={String(year)}>
+                              {year}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
-                  {formData.category === 'investor_overview' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Select Document Type</Label>
-                      <select
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                      >
-                        <option value="">Choose document...</option>
-                        <option value="Presentation">Presentation</option>
-                        <option value="Shareholders' Letter">Shareholders' Letter</option>
-                        <option value="Earnings Call Replay">Earnings Call Replay</option>
-                        <option value="Earnings Call Transcript">Earnings Call Transcript</option>
-                      </select>
-                      <p className="text-[10px] text-slate-500 italic">This will automatically link to the corresponding item in the Investors box.</p>
-                    </div>
-                  )}
+                    {formData.category === 'investor_overview' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Select Document Type</Label>
+                        <select
+                          id="title"
+                          value={formData.title}
+                          onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
+                          className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="">Choose document...</option>
+                          <option value="Presentation">Presentation</option>
+                          <option value="Shareholders' Letter">Shareholders' Letter</option>
+                          <option value="Earnings Call Replay">Earnings Call Replay</option>
+                          <option value="Earnings Call Transcript">Earnings Call Transcript</option>
+                        </select>
+                        <p className="text-[10px] text-slate-500 italic">This will automatically link to the corresponding item in the Investors box.</p>
+                      </div>
+                    )}
 
-                  {formData.category !== 'investor_overview' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        placeholder="Enter heading..."
-                        value={formData.title}
-                        onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                      />
-                    </div>
-                  )}
-                  
-                  {formData.category !== 'investor_overview' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="shortDescription">Short Description (Shows on main screen)</Label>
-                      <Input
-                        id="shortDescription"
-                        placeholder="Enter short summary..."
-                        value={formData.shortDescription}
-                        onChange={(e) => setFormData((p) => ({ ...p, shortDescription: e.target.value }))}
-                      />
-                    </div>
-                  )}
-
-                  {formData.category !== 'investor_overview' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <div className="bg-white rounded-md overflow-hidden border border-input">
-                        <ReactQuill
-                          theme="snow"
-                          value={formData.description}
-                          onChange={(content) => setFormData((p) => ({ ...p, description: content }))}
-                          modules={quillModules}
-                          formats={quillFormats}
-                          placeholder="Enter detailed content..."
-                          className="min-h-[300px]"
+                    {formData.category !== 'investor_overview' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Title</Label>
+                        <Input
+                          id="title"
+                          placeholder="Enter heading..."
+                          value={formData.title}
+                          onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
                         />
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {formData.category !== 'investor_overview' && (
-                    <div className="space-y-2">
-                      <Label>Feature Image</Label>
-                      <div
-                        onClick={triggerFileInput}
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
-                        {formData.image ? (
-                          <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-sm">
-                            <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, image: "" })); }}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Remove
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="p-4 bg-white rounded-full shadow-sm mb-4">
-                              {isUploading ? <Loader2 className="w-8 h-8 text-blue-600 animate-spin" /> : <Upload className="w-8 h-8 text-blue-600" />}
-                            </div>
-                            <p className="text-sm font-medium text-slate-700">Click to upload image</p>
-                            <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
-                          </>
-                        )}
+                    {formData.category !== 'investor_overview' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="shortDescription">Short Description (Shows on main screen)</Label>
+                        <Input
+                          id="shortDescription"
+                          placeholder="Enter short summary..."
+                          value={formData.shortDescription}
+                          onChange={(e) => setFormData((p) => ({ ...p, shortDescription: e.target.value }))}
+                        />
                       </div>
-                    </div>
-                  )}
-                  {formData.category === 'investor_businesses' && (
-                    <div className="space-y-4 pt-4 border-t border-slate-100">
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label>Grayscale Logo (for hover)</Label>
-                          <div
-                            onClick={triggerGrayFileInput}
-                            className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
-                            {formData.grayImage ? (
-                              <div className="relative h-20 w-full flex items-center justify-center">
-                                <img src={formData.grayImage} alt="Gray Preview" className="h-full object-contain" />
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, grayImage: "" })); }}>
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Upload className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs font-medium text-slate-700">Upload</span>
-                              </div>
-                            )}
-                            <input type="file" id="gray-logo-upload" accept="image/*" className="hidden" onChange={handleGrayImageUpload} />
-                          </div>
-                        </div>
+                    )}
 
-                        <div className="space-y-2">
-                          <Label htmlFor="tagline">Quarter Info (e.g. Q4FY26)</Label>
-                          <Input
-                            id="tagline"
-                            placeholder="Q4FY26"
-                            value={formData.tagline}
-                            onChange={(e) => setFormData((p) => ({ ...p, tagline: e.target.value }))}
-                            className="h-[52px]"
+                    {formData.category !== 'investor_overview' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Description</Label>
+                        <div className="bg-white rounded-md overflow-hidden border border-input">
+                          <ReactQuill
+                            theme="snow"
+                            value={formData.description}
+                            onChange={(content) => setFormData((p) => ({ ...p, description: content }))}
+                            modules={quillModules}
+                            formats={quillFormats}
+                            placeholder="Enter detailed content..."
+                            className="min-h-[300px]"
                           />
-                          <p className="text-[10px] text-slate-500 italic">This shows above statistics.</p>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="order">Display Order (1, 2, 3...)</Label>
-                          <Input
-                            id="order"
-                            type="number"
-                            placeholder="Priority"
-                            value={formData.order}
-                            onChange={(e) => setFormData((p) => ({ ...p, order: parseInt(e.target.value) || 0 }))}
-                            className="h-[52px]"
-                          />
-                          <p className="text-[10px] text-slate-500 italic">Lower numbers show first.</p>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Dynamic Sections - Only for Press Releases */}
-                  {formData.category === 'press' && (
-                    <div className="space-y-6 pt-6 border-t border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-lg font-bold">Additional Sections (Paragraph + Image)</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={addSection}>
-                          Add Section
-                        </Button>
+                    {formData.category !== 'investor_overview' && (
+                      <div className="space-y-2">
+                        <Label>Feature Image</Label>
+                        <div
+                          onClick={triggerFileInput}
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
+                          {formData.image ? (
+                            <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-sm">
+                              <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, image: "" })); }}>
+                                  <Trash2 className="w-4 h-4 mr-2" /> Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="p-4 bg-white rounded-full shadow-sm mb-4">
+                                {isUploading ? <Loader2 className="w-8 h-8 text-blue-600 animate-spin" /> : <Upload className="w-8 h-8 text-blue-600" />}
+                              </div>
+                              <p className="text-sm font-medium text-slate-700">Click to upload image</p>
+                              <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            </>
+                          )}
+                        </div>
                       </div>
-
-                      {formData.sections.map((section, index) => (
-                        <Card key={index} className="bg-slate-50/50">
-                          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
-                            <CardTitle className="text-sm font-semibold">Section {index + 1}</CardTitle>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => removeSection(index)}>
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </Button>
-                          </CardHeader>
-                          <CardContent className="space-y-4 px-4 pb-4">
-                            <div className="space-y-2">
-                              <Label className="text-xs">Section Image</Label>
-                              <div className="relative">
-                                {section.image ? (
-                                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-slate-200">
-                                    <img src={section.image} alt="Section Preview" className="w-full h-full object-cover" />
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="sm"
-                                      className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
-                                      onClick={() => setFormData(prev => ({
-                                        ...prev,
-                                        sections: prev.sections.map((s, i) => i === index ? { ...s, image: "" } : s)
-                                      }))}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
+                    )}
+                    {formData.category === 'investor_businesses' && (
+                      <div className="space-y-4 pt-4 border-t border-slate-100">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>Grayscale Logo (for hover)</Label>
+                            <div
+                              onClick={triggerGrayFileInput}
+                              className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer relative overflow-hidden group">
+                              {formData.grayImage ? (
+                                <div className="relative h-20 w-full flex items-center justify-center">
+                                  <img src={formData.grayImage} alt="Gray Preview" className="h-full object-contain" />
+                                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="secondary" size="sm" type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, grayImage: "" })); }}>
+                                      <Trash2 className="w-4 h-4 mr-2" />
                                     </Button>
                                   </div>
-                                ) : (
-                                  <div className="flex items-center gap-4">
-                                    <Input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => handleSectionImageUpload(index, e)}
-                                      className="cursor-pointer"
-                                    />
-                                  </div>
-                                )}
-                              </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <Upload className="w-4 h-4 text-blue-600" />
+                                  <span className="text-xs font-medium text-slate-700">Upload</span>
+                                </div>
+                              )}
+                              <input type="file" id="gray-logo-upload" accept="image/*" className="hidden" onChange={handleGrayImageUpload} />
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs">Section Paragraph</Label>
-                              <div className="bg-white rounded-md overflow-hidden border border-input">
-                                <ReactQuill
-                                  theme="snow"
-                                  value={section.text}
-                                  onChange={(content) => updateSectionText(index, content)}
-                                  modules={quillModules}
-                                  formats={quillFormats}
-                                  placeholder="Enter paragraph..."
-                                  className="min-h-[150px]"
-                                />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                          </div>
 
-                  {/* Business Stats - Only for Investor Businesses */}
-                  {formData.category === 'investor_businesses' && (
-                    <div className="space-y-6 pt-6 border-t border-slate-200">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-lg font-bold">Business Statistics</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={addStat}
-                          disabled={formData.stats.length >= 2}
-                        >
-                          Add Stat
-                        </Button>
+                          <div className="space-y-2">
+                            <Label htmlFor="tagline">Quarter Info (e.g. Q4FY26)</Label>
+                            <Input
+                              id="tagline"
+                              placeholder="Q4FY26"
+                              value={formData.tagline}
+                              onChange={(e) => setFormData((p) => ({ ...p, tagline: e.target.value }))}
+                              className="h-[52px]"
+                            />
+                            <p className="text-[10px] text-slate-500 italic">This shows above statistics.</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="order">Display Order (1, 2, 3...)</Label>
+                            <Input
+                              id="order"
+                              type="number"
+                              placeholder="Priority"
+                              value={formData.order}
+                              onChange={(e) => setFormData((p) => ({ ...p, order: parseInt(e.target.value) || 0 }))}
+                              className="h-[52px]"
+                            />
+                            <p className="text-[10px] text-slate-500 italic">Lower numbers show first.</p>
+                          </div>
+                        </div>
                       </div>
+                    )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {formData.stats.map((stat, index) => (
-                          <Card key={index} className="bg-slate-50/50 relative overflow-visible border-none shadow-none bg-slate-100/50">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
-                              onClick={() => removeStat(index)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                            <CardContent className="p-3 space-y-2">
-                              <div className="space-y-1">
-                                <Label className="text-[10px] uppercase font-bold text-slate-500">Value (e.g. 45+)</Label>
-                                <Input
-                                  placeholder="Value"
-                                  value={stat.value}
-                                  onChange={(e) => updateStat(index, "value", e.target.value)}
-                                  className="h-8 text-sm font-bold bg-white"
-                                />
+                    {/* Dynamic Sections - Only for Press Releases */}
+                    {formData.category === 'press' && (
+                      <div className="space-y-6 pt-6 border-t border-slate-200">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-bold">Additional Sections (Paragraph + Image)</Label>
+                          <Button type="button" variant="outline" size="sm" onClick={addSection}>
+                            Add Section
+                          </Button>
+                        </div>
+
+                        {formData.sections.map((section, index) => (
+                          <Card key={index} className="bg-slate-50/50">
+                            <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
+                              <CardTitle className="text-sm font-semibold">Section {index + 1}</CardTitle>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeSection(index)}>
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </CardHeader>
+                            <CardContent className="space-y-4 px-4 pb-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs">Section Image</Label>
+                                <div className="relative">
+                                  {section.image ? (
+                                    <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-slate-200">
+                                      <img src={section.image} alt="Section Preview" className="w-full h-full object-cover" />
+                                      <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="sm"
+                                        className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
+                                        onClick={() => setFormData(prev => ({
+                                          ...prev,
+                                          sections: prev.sections.map((s, i) => i === index ? { ...s, image: "" } : s)
+                                        }))}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-4">
+                                      <Input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleSectionImageUpload(index, e)}
+                                        className="cursor-pointer"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="space-y-1">
-                                <Label className="text-[10px] uppercase font-bold text-slate-500">Label (e.g. Direct Farms)</Label>
-                                <Input
-                                  placeholder="Label"
-                                  value={stat.label}
-                                  onChange={(e) => updateStat(index, "label", e.target.value)}
-                                  className="h-8 text-xs bg-white"
-                                />
+                              <div className="space-y-2">
+                                <Label className="text-xs">Section Paragraph</Label>
+                                <div className="bg-white rounded-md overflow-hidden border border-input">
+                                  <ReactQuill
+                                    theme="snow"
+                                    value={section.text}
+                                    onChange={(content) => updateSectionText(index, content)}
+                                    modules={quillModules}
+                                    formats={quillFormats}
+                                    placeholder="Enter paragraph..."
+                                    className="min-h-[150px]"
+                                  />
+                                </div>
                               </div>
                             </CardContent>
                           </Card>
                         ))}
                       </div>
-                      {formData.stats.length === 0 && (
-                        <p className="text-sm text-slate-400 italic text-center py-4">No statistics added yet. Add some to show on the business card.</p>
-                      )}
-                    </div>
-                  )}
+                    )}
 
-                  {(formData.category === "investors" || formData.category === "investor_overview" || formData.category === "investor_businesses") && (
-                    <div className="space-y-2">
-                      <Label>PDF Document</Label>
-                      <div
-                        onClick={triggerPdfFileInput}
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-6 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer"
-                      >
-                        <div className="p-3 bg-white rounded-full shadow-sm mb-3">
-                          {isUploading ? <Loader2 className="w-6 h-6 text-blue-600 animate-spin" /> : <FileText className="w-6 h-6 text-blue-600" />}
+                    {/* Business Stats - Only for Investor Businesses */}
+                    {formData.category === 'investor_businesses' && (
+                      <div className="space-y-6 pt-6 border-t border-slate-200">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-bold">Business Statistics</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addStat}
+                            disabled={formData.stats.length >= 2}
+                          >
+                            Add Stat
+                          </Button>
                         </div>
-                        {formData.pdf ? (
-                          <>
-                            <p className="text-sm font-medium text-slate-700 text-center break-all px-2">
-                              {decodeURIComponent(formData.pdf.split("/").pop() || "uploaded.pdf")}
-                            </p>
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="mt-3"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFormData((p) => ({ ...p, pdf: "" }));
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" /> Remove PDF
-                            </Button>
-                          </>
-                        ) : (
-                          <p className="text-sm font-medium text-slate-700">Click to upload PDF</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {formData.stats.map((stat, index) => (
+                            <Card key={index} className="bg-slate-50/50 relative overflow-visible border-none shadow-none bg-slate-100/50">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                onClick={() => removeStat(index)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                              <CardContent className="p-3 space-y-2">
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase font-bold text-slate-500">Value (e.g. 45+)</Label>
+                                  <Input
+                                    placeholder="Value"
+                                    value={stat.value}
+                                    onChange={(e) => updateStat(index, "value", e.target.value)}
+                                    className="h-8 text-sm font-bold bg-white"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase font-bold text-slate-500">Label (e.g. Direct Farms)</Label>
+                                  <Input
+                                    placeholder="Label"
+                                    value={stat.label}
+                                    onChange={(e) => updateStat(index, "label", e.target.value)}
+                                    className="h-8 text-xs bg-white"
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                        {formData.stats.length === 0 && (
+                          <p className="text-sm text-slate-400 italic text-center py-4">No statistics added yet. Add some to show on the business card.</p>
                         )}
-                        <input
-                          type="file"
-                          ref={pdfFileInputRef}
-                          accept="application/pdf"
-                          className="hidden"
-                          onChange={handlePdfUpload}
-                        />
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isUploading}>
-                    {isUploading ? "Uploading Image..." : (editingId ? "Update Content" : "Publish Content")}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <div className="lg:col-span-2 space-y-6">
-              <h3 className="text-lg font-semibold flex items-center gap-2 px-1">
-                <ImageIcon className="w-5 h-5 text-slate-400" />
-                Live Content ({publishedItems.length})
-              </h3>
-
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {publishedItems.length > 0 ? (
-                  publishedItems.map((item) => (
-                    <div key={item._id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-300 transition-all group overflow-hidden">
-                      <div className="flex gap-4">
-                        <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
-                          <img src={item.image} className="w-full h-full object-cover" alt="" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <h4 className="font-bold text-slate-900 truncate">{item.title}</h4>
-                            {item.pinned && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                                <Pin className="w-3 h-3" /> Pinned
-                              </span>
-                            )}
+                    {(formData.category === "investors" || formData.category === "investor_overview" || formData.category === "investor_businesses") && (
+                      <div className="space-y-2">
+                        <Label>PDF Document</Label>
+                        <div
+                          onClick={triggerPdfFileInput}
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-6 bg-slate-50 transition-colors hover:bg-slate-100 cursor-pointer"
+                        >
+                          <div className="p-3 bg-white rounded-full shadow-sm mb-3">
+                            {isUploading ? <Loader2 className="w-6 h-6 text-blue-600 animate-spin" /> : <FileText className="w-6 h-6 text-blue-600" />}
                           </div>
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
-                            <Calendar className="w-3 h-3" /> {item.date}
-                            {item.order !== undefined && (
-                              <div className="ml-2 flex items-center gap-1">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Order:</span>
-                                <input
-                                  type="number"
-                                  defaultValue={item.order}
-                                  onBlur={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    if (!isNaN(val) && val !== item.order) {
-                                      handleUpdateOrder(item._id, val);
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      const val = parseInt((e.target as HTMLInputElement).value);
+                          {formData.pdf ? (
+                            <>
+                              <p className="text-sm font-medium text-slate-700 text-center break-all px-2">
+                                {decodeURIComponent(formData.pdf.split("/").pop() || "uploaded.pdf")}
+                              </p>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                className="mt-3"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormData((p) => ({ ...p, pdf: "" }));
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" /> Remove PDF
+                              </Button>
+                            </>
+                          ) : (
+                            <p className="text-sm font-medium text-slate-700">Click to upload PDF</p>
+                          )}
+                          <input
+                            type="file"
+                            ref={pdfFileInputRef}
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={handlePdfUpload}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isUploading}>
+                      {isUploading ? "Uploading Image..." : (editingId ? "Update Content" : "Publish Content")}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <div className="lg:col-span-2 space-y-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2 px-1">
+                  <ImageIcon className="w-5 h-5 text-slate-400" />
+                  Live Content ({publishedItems.length})
+                </h3>
+
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                  {publishedItems.length > 0 ? (
+                    publishedItems.map((item) => (
+                      <div key={item._id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-300 transition-all group overflow-hidden">
+                        <div className="flex gap-4">
+                          <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100">
+                            <img src={item.image} className="w-full h-full object-cover" alt="" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <h4 className="font-bold text-slate-900 truncate">{item.title}</h4>
+                              {item.pinned && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                  <Pin className="w-3 h-3" /> Pinned
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 flex items-center gap-1 mb-2">
+                              <Calendar className="w-3 h-3" /> {item.date}
+                              {item.order !== undefined && (
+                                <div className="ml-2 flex items-center gap-1">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase">Order:</span>
+                                  <input
+                                    type="number"
+                                    defaultValue={item.order}
+                                    onBlur={(e) => {
+                                      const val = parseInt(e.target.value);
                                       if (!isNaN(val) && val !== item.order) {
                                         handleUpdateOrder(item._id, val);
-                                        (e.target as HTMLInputElement).blur();
                                       }
-                                    }
-                                  }}
-                                  className="w-12 h-6 px-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-center"
-                                />
-                              </div>
-                            )}
-                          </p>
-                          {item.category === "community" && item.communityType && (
-                            <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
-                              {item.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"}
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const val = parseInt((e.target as HTMLInputElement).value);
+                                        if (!isNaN(val) && val !== item.order) {
+                                          handleUpdateOrder(item._id, val);
+                                          (e.target as HTMLInputElement).blur();
+                                        }
+                                      }
+                                    }}
+                                    className="w-12 h-6 px-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                                  />
+                                </div>
+                              )}
                             </p>
-                          )}
-                          {item.category === "investors" && item.pdf && (
-                            <p className="text-[10px] uppercase tracking-wider text-blue-700 mb-2">PDF attached</p>
-                          )}
-                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={Boolean(item.pinned)}
-                              aria-label="Toggle pin"
-                              title={item.pinned ? "Pinned" : "Pin post"}
-                              onClick={() => handleTogglePin(item._id)}
-                              disabled={pinUpdatingId === item._id}
-                              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${item.pinned ? "bg-green-500" : "bg-slate-300"
-                                } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
-                            >
-                              <span
-                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${item.pinned ? "translate-x-5" : "translate-x-1"
-                                  }`}
-                              />
-                            </button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 py-0 px-3 text-xs"
-                              onClick={() => handleEdit(item)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="h-8 py-0 px-3 text-xs"
-                              onClick={() => handleDelete(item._id)}
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" /> Delete
-                            </Button>
+                            {item.category === "community" && item.communityType && (
+                              <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-2">
+                                {item.communityType === "csr" ? "CSR Initiatives" : "Non-CSR Initiatives"}
+                              </p>
+                            )}
+                            {item.category === "investors" && item.pdf && (
+                              <p className="text-[10px] uppercase tracking-wider text-blue-700 mb-2">PDF attached</p>
+                            )}
+                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={Boolean(item.pinned)}
+                                aria-label="Toggle pin"
+                                title={item.pinned ? "Pinned" : "Pin post"}
+                                onClick={() => handleTogglePin(item._id)}
+                                disabled={pinUpdatingId === item._id}
+                                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${item.pinned ? "bg-green-500" : "bg-slate-300"
+                                  } ${pinUpdatingId === item._id ? "opacity-70 cursor-not-allowed" : ""}`}
+                              >
+                                <span
+                                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${item.pinned ? "translate-x-5" : "translate-x-1"
+                                    }`}
+                                />
+                              </button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 py-0 px-3 text-xs"
+                                onClick={() => handleEdit(item)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 py-0 px-3 text-xs"
+                                onClick={() => handleDelete(item._id)}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" /> Delete
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="py-12 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center px-6">
+                      <p className="text-slate-400 text-sm italic">No posts in this category yet.</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="py-12 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center px-6">
-                    <p className="text-slate-400 text-sm italic">No posts in this category yet.</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
           )}
         </Tabs>
       </div>

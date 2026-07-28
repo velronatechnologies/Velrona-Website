@@ -8,6 +8,7 @@ import fs from 'fs';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +16,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../dist')));
@@ -104,6 +108,7 @@ const signatureSubmissionSchema = new mongoose.Schema({
   email: { type: String, required: true },
   dateSigned: { type: String, required: true },
   signatureData: { type: String, required: true },
+  signedPdfUrl: String,
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -162,7 +167,7 @@ app.post('/api/upload/image', (req, res) => {
   });
 });
 
-// Configure Multer storage for PDF uploads (Memory storage for streaming to Cloudinary raw)
+// Configure Multer storage for PDF uploads (Memory storage for streaming to Cloudinary)
 const memoryStorage = multer.memoryStorage();
 const pdfMemoryUpload = multer({ storage: memoryStorage });
 
@@ -170,34 +175,54 @@ const pdfMemoryUpload = multer({ storage: memoryStorage });
 app.post('/api/upload/pdf', (req, res) => {
   pdfMemoryUpload.single('file')(req, res, async (err) => {
     if (err) {
-      console.error('Multer Error:', err);
-      return res.status(500).json({ error: 'Upload failed', details: err.message });
+      console.error('Multer PDF Error:', err);
+      return res.status(500).json({ error: err.message || 'Multer PDF upload error' });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'No file buffer received' });
     }
 
+    // 1. Try Cloudinary Upload
     try {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'velrona_uploads/pdfs',
-          resource_type: 'raw',
-          public_id: `doc_${Date.now()}.pdf`,
-        },
-        (error, result) => {
-          if (error || !result) {
-            console.error('Cloudinary Raw PDF Upload Error:', error);
-            return res.status(500).json({ error: 'PDF upload failed', details: error?.message });
+      const cloudinaryResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'velrona_uploads/pdfs',
+            resource_type: 'auto',
+          },
+          (cloudinaryErr, result) => {
+            if (cloudinaryErr || !result) reject(cloudinaryErr || new Error('No result returned'));
+            else resolve(result);
           }
-          console.log('PDF successfully uploaded to Cloudinary raw:', result.secure_url);
-          res.json({ secure_url: result.secure_url });
-        }
-      );
-      uploadStream.end(req.file.buffer);
-    } catch (uploadErr) {
-      console.error('Upload stream error:', uploadErr);
-      res.status(500).json({ error: 'PDF processing failed' });
+        );
+        stream.end(req.file.buffer);
+      });
+
+      if (cloudinaryResult && cloudinaryResult.secure_url) {
+        console.log('PDF successfully uploaded to Cloudinary:', cloudinaryResult.secure_url);
+        return res.json({ secure_url: cloudinaryResult.secure_url });
+      }
+    } catch (cErr) {
+      console.warn('Cloudinary upload failed, falling back to local server storage:', cErr?.message || cErr);
+    }
+
+    // 2. Fallback: Save to Local Server Storage (/uploads/pdfs/)
+    try {
+      const uploadsDir = path.join(__dirname, 'uploads/pdfs');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const filename = `doc_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`;
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      const localUrl = `/uploads/pdfs/${filename}`;
+      console.log('PDF successfully saved to local server disk:', localUrl);
+      return res.json({ secure_url: localUrl });
+    } catch (diskErr) {
+      console.error('Local storage write error:', diskErr);
+      return res.status(500).json({ error: 'Failed to process PDF upload file' });
     }
   });
 });
@@ -354,16 +379,130 @@ app.post('/api/signature-submissions', async (req, res) => {
     if (!docId || !fullName || !email || !signatureData) {
       return res.status(400).json({ error: 'All fields including signature are required' });
     }
+
+    const doc = await SignatureDoc.findById(docId);
+    if (!doc) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    let signedPdfUrl = doc.pdfUrl;
+
+    try {
+      // 1. Fetch original PDF bytes
+      let pdfBytes;
+      if (doc.pdfUrl.startsWith('/uploads/')) {
+        const localPath = path.join(__dirname, doc.pdfUrl.replace(/^\/uploads\//, 'uploads/'));
+        if (fs.existsSync(localPath)) {
+          pdfBytes = fs.readFileSync(localPath);
+        }
+      }
+
+      if (!pdfBytes) {
+        const fetchRes = await fetch(doc.pdfUrl);
+        const arrayBuffer = await fetchRes.arrayBuffer();
+        pdfBytes = new Uint8Array(arrayBuffer);
+      }
+
+      if (pdfBytes) {
+        // 2. Load PDF with pdf-lib
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        const pages = pdfDoc.getPages();
+        const lastPage = pages[pages.length - 1];
+        const { width } = lastPage.getSize();
+
+        // 3. Embed drawn signature PNG
+        const signatureImageBytes = Buffer.from(signatureData.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+        const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
+        const sigDims = signatureImage.scale(0.35);
+
+        const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        // 4. Draw Official Signature Stamp Box on bottom of page
+        const boxHeight = 90;
+        const boxY = 25;
+        const boxMargin = 30;
+        const boxWidth = width - (boxMargin * 2);
+
+        lastPage.drawRectangle({
+          x: boxMargin,
+          y: boxY,
+          width: boxWidth,
+          height: boxHeight,
+          color: rgb(0.97, 0.98, 0.99),
+          borderColor: rgb(0.8, 0.85, 0.9),
+          borderWidth: 1,
+        });
+
+        lastPage.drawText('OFFICIAL DIGITAL SIGNATURE & VERIFICATION', {
+          x: boxMargin + 15,
+          y: boxY + boxHeight - 18,
+          size: 9,
+          font: helveticaBold,
+          color: rgb(0.1, 0.4, 0.8),
+        });
+
+        lastPage.drawText(`Signed By: ${fullName}`, {
+          x: boxMargin + 15,
+          y: boxY + boxHeight - 35,
+          size: 10,
+          font: helveticaBold,
+          color: rgb(0.06, 0.09, 0.16),
+        });
+
+        lastPage.drawText(`Email: ${email}`, {
+          x: boxMargin + 15,
+          y: boxY + boxHeight - 50,
+          size: 9,
+          font: helvetica,
+          color: rgb(0.3, 0.35, 0.4),
+        });
+
+        lastPage.drawText(`Date Signed: ${dateSigned || new Date().toLocaleDateString('en-GB')}`, {
+          x: boxMargin + 15,
+          y: boxY + boxHeight - 65,
+          size: 9,
+          font: helvetica,
+          color: rgb(0.3, 0.35, 0.4),
+        });
+
+        lastPage.drawImage(signatureImage, {
+          x: boxMargin + boxWidth - Math.min(sigDims.width, 180) - 20,
+          y: boxY + 12,
+          width: Math.min(sigDims.width, 180),
+          height: Math.min(sigDims.height, 60),
+        });
+
+        // 5. Save stamped PDF
+        const modifiedPdfBytes = await pdfDoc.save();
+        const uploadsDir = path.join(__dirname, 'uploads/pdfs');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const signedFilename = `signed_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`;
+        const signedFilePath = path.join(uploadsDir, signedFilename);
+        fs.writeFileSync(signedFilePath, modifiedPdfBytes);
+
+        signedPdfUrl = `/uploads/pdfs/${signedFilename}`;
+        console.log('Successfully created stamped signed PDF:', signedPdfUrl);
+      }
+    } catch (stampErr) {
+      console.error('PDF Signature Stamping error:', stampErr);
+    }
+
     const submission = new SignatureSubmission({
       docId,
       fullName,
       email,
       dateSigned: dateSigned || new Date().toLocaleDateString('en-GB'),
       signatureData,
+      signedPdfUrl,
     });
     await submission.save();
+
     res.status(201).json(submission);
   } catch (err) {
+    console.error('Signature submission error:', err);
     res.status(500).json({ error: 'Failed to save signature submission' });
   }
 });
