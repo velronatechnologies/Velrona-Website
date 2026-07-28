@@ -23,6 +23,7 @@ const InvestorSignPage = () => {
   const [doc, setDoc] = useState<SignatureDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [viewerEngine, setViewerEngine] = useState<"google" | "native">("google");
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -265,27 +266,68 @@ const InvestorSignPage = () => {
           ) : (
             <>
               {/* Responsive PDF Reader Frame */}
-              <div className="bg-white border border-slate-200 rounded-3xl p-3 sm:p-4 shadow-sm mb-8">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 mb-3">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-blue-600" /> Read & Review Document
-                  </span>
-                  <a
-                    href={doc.pdfUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-blue-600 hover:underline font-medium flex items-center gap-1"
-                  >
-                    Open Full Screen <ExternalLink className="w-3 h-3" />
-                  </a>
+              <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 shadow-sm mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 pb-4 mb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Read & Review Document</span>
+                  </div>
+
+                  {/* Viewer Controls */}
+                  <div className="flex items-center flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewerEngine("google")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        viewerEngine === "google"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      Cloud Viewer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewerEngine("native")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        viewerEngine === "native"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      Browser Viewer
+                    </button>
+                    <a
+                      href={doc.pdfUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors inline-flex items-center gap-1"
+                    >
+                      Open Full Screen <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
 
-                <div className="relative w-full overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 min-h-[450px] sm:min-h-[600px]">
-                  <iframe
-                    src={`${doc.pdfUrl}#toolbar=0`}
-                    title={doc.title}
-                    className="w-full h-[500px] sm:h-[650px] lg:h-[750px] rounded-2xl border-0"
-                  />
+                <div className="relative w-full overflow-hidden rounded-2xl bg-slate-900 border border-slate-200 min-h-[480px] sm:min-h-[620px]">
+                  {viewerEngine === "google" ? (
+                    <iframe
+                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(doc.pdfUrl)}&embedded=true`}
+                      title={doc.title}
+                      className="w-full h-[550px] sm:h-[680px] lg:h-[780px] rounded-2xl border-0 bg-white"
+                    />
+                  ) : (
+                    <object
+                      data={doc.pdfUrl}
+                      type="application/pdf"
+                      className="w-full h-[550px] sm:h-[680px] lg:h-[780px] rounded-2xl border-0"
+                    >
+                      <iframe
+                        src={doc.pdfUrl}
+                        title={doc.title}
+                        className="w-full h-[550px] sm:h-[680px] lg:h-[780px] rounded-2xl border-0 bg-white"
+                      />
+                    </object>
+                  )}
                 </div>
               </div>
 
