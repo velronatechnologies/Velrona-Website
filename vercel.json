@@ -11,22 +11,14 @@
       "config": { "distDir": "dist" }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/admin",
-      "status": 308,
-      "headers": { "Location": "/admin@velrona" }
+      "source": "/api/(.*)",
+      "destination": "server/index.js"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "server/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html",
-      "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate"
-      }
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

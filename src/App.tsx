@@ -28,6 +28,8 @@ const App = () => (
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin" element={<Navigate to="/admin@velrona" replace />} />
           <Route path="/admin@velrona" element={<Admin />} />
+          <Route path="/admin%40velrona" element={<Admin />} />
+          <Route path="/admin-velrona" element={<Admin />} />
           <Route path="/community/csr" element={<InitiativesPage type="csr" />} />
           <Route path="/community/non-csr" element={<InitiativesPage type="non-csr" />} />
           <Route path="/press-release" element={<ContentPage title="Press Release" category="press" description="Making an Impact: Velrona Group’s Commitment to Create a Better World Together" />} />
