@@ -258,6 +258,11 @@ app.delete('/api/content/:id', async (req, res) => {
   }
 });
 
+// Redirect legacy /admin requests to secured route
+app.get('/admin', (req, res) => {
+  res.redirect('/admin@velrona');
+});
+
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
 app.use((req, res) => {
