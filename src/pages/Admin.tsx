@@ -40,9 +40,7 @@ interface ContentItem {
 }
 
 const Admin = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem("velrona_admin_auth") === "true";
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loginUserId, setLoginUserId] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,11 +48,11 @@ const Admin = () => {
   const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
-    // Clear any legacy localStorage flags from earlier browser sessions
-    if (localStorage.getItem("velrona_admin_auth")) {
-      localStorage.removeItem("velrona_admin_auth");
-      localStorage.removeItem("velrona_admin_token");
-    }
+    // Clear any stored sessions on mount to guarantee fresh security login
+    sessionStorage.removeItem("velrona_admin_auth");
+    sessionStorage.removeItem("velrona_admin_token");
+    localStorage.removeItem("velrona_admin_auth");
+    localStorage.removeItem("velrona_admin_token");
   }, []);
 
   const [isUploading, setIsUploading] = useState(false);

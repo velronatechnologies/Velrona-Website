@@ -26,7 +26,6 @@ const App = () => (
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/culture" element={<Culture />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/admin" element={<Navigate to="/admin@velrona" replace />} />
           <Route path="/admin@velrona" element={<Admin />} />
           <Route path="/admin%40velrona" element={<Admin />} />
           <Route path="/admin-velrona" element={<Admin />} />
