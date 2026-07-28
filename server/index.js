@@ -87,6 +87,37 @@ const contentSchema = new mongoose.Schema({
 
 const Content = mongoose.model('Content', contentSchema);
 
+const ADMIN_USER_ID = process.env.ADMIN_USER_ID || 'admin@velrona';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Velrona@dharun';
+
+// Admin Login Endpoint
+app.post('/api/admin/login', (req, res) => {
+  const { userId, password } = req.body;
+  if (!userId || !password) {
+    return res.status(400).json({ error: 'User ID and password are required' });
+  }
+
+  if (userId === ADMIN_USER_ID && password === ADMIN_PASSWORD) {
+    const token = 'velrona_auth_' + Buffer.from(`${userId}:${Date.now()}`).toString('base64');
+    return res.json({
+      success: true,
+      token,
+      userId: ADMIN_USER_ID
+    });
+  }
+
+  return res.status(401).json({ error: 'Invalid User ID or Password' });
+});
+
+// Admin Verify Endpoint
+app.get('/api/admin/verify', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer velrona_auth_')) {
+    return res.json({ authenticated: true });
+  }
+  return res.status(401).json({ authenticated: false });
+});
+
 // Image Upload Endpoint
 app.post('/api/upload/image', (req, res) => {
   imageUpload.single('file')(req, res, (err) => {

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar, Pin, FileText } from "lucide-react";
+import { Upload, Trash2, Loader2, Image as ImageIcon, Calendar, Pin, FileText, Lock, User, Eye, EyeOff, LogOut, ShieldCheck, KeyRound } from "lucide-react";
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -40,6 +40,15 @@ interface ContentItem {
 }
 
 const Admin = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem("velrona_admin_auth") === "true";
+  });
+  const [loginUserId, setLoginUserId] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
   const [isUploading, setIsUploading] = useState(false);
   const [publishedItems, setPublishedItems] = useState<ContentItem[]>([]);
   const currentYear = new Date().getFullYear();
@@ -64,6 +73,59 @@ const Admin = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfFileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: loginUserId, password: loginPassword }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        localStorage.setItem("velrona_admin_auth", "true");
+        if (data.token) {
+          localStorage.setItem("velrona_admin_token", data.token);
+        }
+        setIsAuthenticated(true);
+        toast.success("Welcome to Admin Dashboard!");
+      } else {
+        if (loginUserId === "admin@velrona" && loginPassword === "Velrona@dharun") {
+          localStorage.setItem("velrona_admin_auth", "true");
+          setIsAuthenticated(true);
+          toast.success("Welcome to Admin Dashboard!");
+        } else {
+          setLoginError(data.error || "Invalid User ID or Password");
+          toast.error("Login failed. Check your User ID and Password.");
+        }
+      }
+    } catch (err) {
+      if (loginUserId === "admin@velrona" && loginPassword === "Velrona@dharun") {
+        localStorage.setItem("velrona_admin_auth", "true");
+        setIsAuthenticated(true);
+        toast.success("Welcome to Admin Dashboard!");
+      } else {
+        setLoginError("Invalid User ID or Password");
+        toast.error("Login failed. Check your User ID and Password.");
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("velrona_admin_auth");
+    localStorage.removeItem("velrona_admin_token");
+    setIsAuthenticated(false);
+    setLoginPassword("");
+    toast.info("Logged out successfully");
+  };
+
   const fetchItems = async () => {
     try {
       const query =
@@ -83,8 +145,10 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    fetchItems();
-  }, [formData.category, formData.communityType]);
+    if (isAuthenticated) {
+      fetchItems();
+    }
+  }, [formData.category, formData.communityType, isAuthenticated]);
 
   const handleEdit = (item: ContentItem) => {
     const yearMatch = item.date?.match(/\b(19|20)\d{2}\b/);
@@ -460,6 +524,117 @@ const Admin = () => {
     'list', 'bullet',
   ];
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="w-full max-w-md"
+        >
+          <Card className="border border-slate-200 bg-white rounded-3xl overflow-hidden shadow-none">
+            <CardHeader className="space-y-3 text-center pb-6 border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white pt-8">
+              <div className="mx-auto flex justify-center mb-2">
+                <img
+                  src="/LOGO MARK 1.png"
+                  alt="Velrona"
+                  className="h-10 sm:h-12 w-auto object-contain"
+                />
+              </div>
+              <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 mx-auto">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Admin Access Portal
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-extrabold tracking-tight text-slate-900 uppercase mt-1">Admin Sign In</CardTitle>
+                <CardDescription className="text-slate-500 text-xs sm:text-sm mt-1">
+                  Enter your security credentials to access the control panel
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 px-6 sm:px-8 pb-8">
+              <form onSubmit={handleLogin} className="space-y-5">
+                {loginError && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-medium text-center"
+                  >
+                    {loginError}
+                  </motion.div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="userId" className="text-slate-700 text-xs uppercase tracking-wider font-bold">User ID</Label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="userId"
+                      type="text"
+                      placeholder="Enter User ID"
+                      value={loginUserId}
+                      onChange={(e) => setLoginUserId(e.target.value)}
+                      required
+                      className="pl-10 h-11 bg-slate-50/70 border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-sm font-medium transition-all shadow-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-slate-700 text-xs uppercase tracking-wider font-bold">Password</Label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter Password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                      className="pl-10 pr-10 h-11 bg-slate-50/70 border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-sm font-medium transition-all shadow-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-all text-xs uppercase tracking-wider mt-2 shadow-none"
+                >
+                  {isLoggingIn ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Verifying...
+                    </span>
+                  ) : (
+                    "Sign In to Dashboard"
+                  )}
+                </Button>
+              </form>
+
+              <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-slate-500 hover:text-slate-700 rounded-xl"
+                  onClick={() => window.location.href = "/"}
+                >
+                  ← Back to Main Website
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-6 lg:px-16">
       <style>{`
@@ -483,16 +658,24 @@ const Admin = () => {
           border: none !important;
         }
       `}</style>
-      <div className="container mx-auto max-w-5xl">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
-            <p className="text-slate-500 mt-2">Manage your website content and media.</p>
+      <div className="container mx-auto max-w-6xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-border">
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight uppercase">Admin Dashboard</h1>
+              <p className="text-muted-foreground text-sm mt-1">Manage website content, press releases, CSR & business cards.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" /> Logged in as Admin
+              </span>
+              <Button variant="outline" size="sm" onClick={() => window.location.href = "/"} className="rounded-xl font-medium">
+                View Site
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleLogout} className="rounded-xl font-medium flex items-center gap-1.5">
+                <LogOut className="w-3.5 h-3.5" /> Logout
+              </Button>
+            </div>
           </div>
-          <Button variant="outline" onClick={() => window.location.href = "/"}>
-            View Website
-          </Button>
-        </div>
 
         <Tabs defaultValue="community" className="w-full" onValueChange={(v) => setFormData(p => ({ ...p, category: v as any }))}>
           <TabsList className="grid w-full grid-cols-5 mb-8">
