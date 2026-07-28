@@ -24,9 +24,9 @@ const MONGODB_URI = "mongodb+srv://ramji:Ramji23112005@cluster0.ln4g5.mongodb.ne
 
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: 'demnzc2ct',
-  api_key: '784962488745142',
-  api_secret: 'SdeZ6Mh-9TblFnVLToKFtswlcrI'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'demnzc2ct',
+  api_key: process.env.CLOUDINARY_API_KEY || '871927416829761',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '17dx_wkO7nHZnAvhvSK-7nB1hoQ'
 });
 
 // Configure Multer storage for image uploads
@@ -162,23 +162,43 @@ app.post('/api/upload/image', (req, res) => {
   });
 });
 
+// Configure Multer storage for PDF uploads (Memory storage for streaming to Cloudinary raw)
+const memoryStorage = multer.memoryStorage();
+const pdfMemoryUpload = multer({ storage: memoryStorage });
+
 // PDF Upload Endpoint (Investors)
 app.post('/api/upload/pdf', (req, res) => {
-  pdfUpload.single('file')(req, res, (err) => {
+  pdfMemoryUpload.single('file')(req, res, async (err) => {
     if (err) {
-      console.error('Multer/Cloudinary Error:', err);
-      return res.status(500).json({
-        error: 'Upload failed',
-        details: err.message,
-      });
+      console.error('Multer Error:', err);
+      return res.status(500).json({ error: 'Upload failed', details: err.message });
     }
 
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    console.log('PDF successfully uploaded to Cloudinary:', req.file.path);
-    res.json({ secure_url: req.file.path });
+    try {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'velrona_uploads/pdfs',
+          resource_type: 'raw',
+          public_id: `doc_${Date.now()}.pdf`,
+        },
+        (error, result) => {
+          if (error || !result) {
+            console.error('Cloudinary Raw PDF Upload Error:', error);
+            return res.status(500).json({ error: 'PDF upload failed', details: error?.message });
+          }
+          console.log('PDF successfully uploaded to Cloudinary raw:', result.secure_url);
+          res.json({ secure_url: result.secure_url });
+        }
+      );
+      uploadStream.end(req.file.buffer);
+    } catch (uploadErr) {
+      console.error('Upload stream error:', uploadErr);
+      res.status(500).json({ error: 'PDF processing failed' });
+    }
   });
 });
 
