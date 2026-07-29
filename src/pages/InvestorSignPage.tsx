@@ -62,46 +62,113 @@ const InvestorSignPage = () => {
     if (id) fetchDoc();
   }, [id]);
 
-  // Handle canvas sizing and responsiveness
+  // Handle canvas sizing and responsiveness with HDPI support
   useEffect(() => {
-    if (isModalOpen && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const parent = canvas.parentElement;
-      if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = 180;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.strokeStyle = "#0f172a"; // Dark slate stroke
-          ctx.lineWidth = 2.5;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
+    const setupCanvas = () => {
+      if (isModalOpen && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const parent = canvas.parentElement;
+        if (parent) {
+          const rect = parent.getBoundingClientRect();
+          const dpr = window.devicePixelRatio || 1;
+          const displayWidth = rect.width || 400;
+          const displayHeight = 180;
+
+          // Set display size (css)
+          canvas.style.width = `${displayWidth}px`;
+          canvas.style.height = `${displayHeight}px`;
+
+          // Set actual size in memory (scaled for retina)
+          canvas.width = Math.floor(displayWidth * dpr);
+          canvas.height = Math.floor(displayHeight * dpr);
+
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.scale(dpr, dpr);
+            ctx.strokeStyle = "#0f172a"; // Dark slate stroke
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+          }
         }
       }
-    }
+    };
+
+    setupCanvas();
+    window.addEventListener("resize", setupCanvas);
+    return () => window.removeEventListener("resize", setupCanvas);
   }, [isModalOpen]);
 
-  // Touch & Mouse Drawing Helpers
+  // Helper to get complete absolute PDF URL for Google Docs Viewer and iOS Safari compatibility
+  const getFullPdfUrl = (url: string) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+      return url;
+    }
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  const getGoogleDocsUrl = (url: string) => {
+    const full = getFullPdfUrl(url);
+    if (full.startsWith("data:")) return full;
+    if (full.includes("localhost") || full.includes("127.0.0.1")) {
+      return `${full}#toolbar=0&navpanes=0&scrollbar=1`;
+    }
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(full)}&embedded=true`;
+  };
+
+  // Prevent iOS Safari page scroll while drawing signature
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isModalOpen) return;
+
+    const preventTouchScroll = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    canvas.addEventListener("touchstart", preventTouchScroll, { passive: false });
+    canvas.addEventListener("touchmove", preventTouchScroll, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("touchstart", preventTouchScroll);
+      canvas.removeEventListener("touchmove", preventTouchScroll);
+    };
+  }, [isModalOpen]);
+
+  // Touch & Mouse Drawing Helpers with iOS / Mac safety
   const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    if ("touches" in e) {
-      const touch = e.touches[0];
-      return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
-      };
+    
+    let clientX = 0;
+    let clientY = 0;
+
+    const nativeEvent = e.nativeEvent as any;
+    if ("touches" in e && e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if ("changedTouches" in e && e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else if (nativeEvent && nativeEvent.touches && nativeEvent.touches.length > 0) {
+      clientX = nativeEvent.touches[0].clientX;
+      clientY = nativeEvent.touches[0].clientY;
     } else {
-      return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
+      const mouseEvent = e as React.MouseEvent<HTMLCanvasElement>;
+      clientX = mouseEvent.clientX || 0;
+      clientY = mouseEvent.clientY || 0;
     }
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     setIsDrawing(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -115,7 +182,7 @@ const InvestorSignPage = () => {
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -134,7 +201,10 @@ const InvestorSignPage = () => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
     setHasSignature(false);
   };
 
@@ -251,16 +321,6 @@ const InvestorSignPage = () => {
                 Signed on: {dateSigned} • Email: {email}
               </div>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                {submittedSignedPdfUrl && (
-                  <a
-                    href={submittedSignedPdfUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-all shadow-sm"
-                  >
-                    <FileText className="w-4 h-4" /> View Stamped Signed PDF
-                  </a>
-                )}
                 <Button variant="outline" className="rounded-xl border-emerald-300 text-emerald-800 hover:bg-emerald-100" onClick={() => window.location.href = "/"}>
                   Return to Main Website
                 </Button>
@@ -270,31 +330,60 @@ const InvestorSignPage = () => {
             <>
               {/* Responsive PDF Reader Frame */}
               <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 mb-8">
-                <div className="flex items-center justify-between gap-3 px-1 pb-4 mb-4 border-b border-slate-100">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-4 mb-4 border-b border-slate-100">
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-600" />
                     <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Read & Review Document</span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsPreviewOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" /> Fullscreen Preview
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={getFullPdfUrl(doc.pdfUrl)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" /> Open Direct PDF
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsPreviewOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Fullscreen
+                    </button>
+                  </div>
                 </div>
 
                 <div className="relative w-full overflow-hidden rounded-2xl bg-slate-900 border border-slate-200 min-h-[480px] sm:min-h-[620px]">
-                  <iframe
-                    src={
-                      doc.pdfUrl.startsWith("http")
-                        ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.pdfUrl)}&embedded=true`
-                        : `${doc.pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`
-                    }
-                    title={doc.title}
+                  <object
+                    data={`${getFullPdfUrl(doc.pdfUrl)}#toolbar=1&navpanes=0&scrollbar=1`}
+                    type="application/pdf"
                     className="w-full h-[550px] sm:h-[680px] lg:h-[780px] rounded-2xl border-0 bg-white"
-                  />
+                  >
+                    <iframe
+                      src={getGoogleDocsUrl(doc.pdfUrl)}
+                      title={doc.title}
+                      className="w-full h-[550px] sm:h-[680px] lg:h-[780px] rounded-2xl border-0 bg-white"
+                    >
+                      <div className="flex flex-col items-center justify-center p-8 text-center text-slate-300 h-full bg-slate-900">
+                        <FileText className="w-12 h-12 text-blue-400 mb-3" />
+                        <p className="font-bold text-white text-base mb-1">Viewing on iOS or Safari?</p>
+                        <p className="text-xs text-slate-400 max-w-sm mb-4">
+                          Safari on iOS limits embedded PDF previews. Tap below to view the document natively.
+                        </p>
+                        <a
+                          href={getFullPdfUrl(doc.pdfUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md"
+                        >
+                          <ExternalLink className="w-4 h-4" /> Open Full PDF Document
+                        </a>
+                      </div>
+                    </iframe>
+                  </object>
                 </div>
               </div>
 
@@ -465,24 +554,52 @@ const InvestorSignPage = () => {
                   <FileText className="w-5 h-5 text-blue-600" />
                   <h3 className="font-bold text-slate-900 text-base uppercase">Document Fullscreen Preview</h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewOpen(false)}
-                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-200 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={getFullPdfUrl(doc.pdfUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Open Direct PDF
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(false)}
+                    className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-200 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               <div className="flex-1 bg-slate-900 p-2">
-                <iframe
-                  src={
-                    doc.pdfUrl.startsWith("http")
-                      ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.pdfUrl)}&embedded=true`
-                      : `${doc.pdfUrl}#toolbar=0&navpanes=0&scrollbar=1`
-                  }
-                  title={doc.title}
+                <object
+                  data={`${getFullPdfUrl(doc.pdfUrl)}#toolbar=1&navpanes=0&scrollbar=1`}
+                  type="application/pdf"
                   className="w-full h-full rounded-2xl border-0 bg-white"
-                />
+                >
+                  <iframe
+                    src={getGoogleDocsUrl(doc.pdfUrl)}
+                    title={doc.title}
+                    className="w-full h-full rounded-2xl border-0 bg-white"
+                  >
+                    <div className="flex flex-col items-center justify-center p-8 text-center text-slate-300 h-full bg-slate-900">
+                      <FileText className="w-12 h-12 text-blue-400 mb-3" />
+                      <p className="font-bold text-white text-base mb-1">Viewing on iOS or Safari?</p>
+                      <p className="text-xs text-slate-400 max-w-sm mb-4">
+                        Safari on iOS limits embedded PDF previews. Tap below to view the document natively.
+                      </p>
+                      <a
+                        href={getFullPdfUrl(doc.pdfUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-md"
+                      >
+                        <ExternalLink className="w-4 h-4" /> Open Full PDF Document
+                      </a>
+                    </div>
+                  </iframe>
+                </object>
               </div>
             </motion.div>
           </div>

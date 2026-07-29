@@ -410,113 +410,101 @@ app.post('/api/signature-submissions', async (req, res) => {
       }
 
       if (pdfBytes) {
-        // 2. Load PDF with pdf-lib & add dedicated Signature Certificate Page at the end
+        // 2. Load PDF with pdf-lib & stamp signature block on the LAST PAGE (bottom-right)
         const pdfDoc = await PDFDocument.load(pdfBytes);
         
-        // Add a fresh, formal signature certificate page at the end of the document
-        const sigPage = pdfDoc.addPage([595, 842]);
+        // Target the last page of the document instead of creating a separate page
+        const pages = pdfDoc.getPages();
+        const sigPage = pages.length > 0 ? pages[pages.length - 1] : pdfDoc.addPage([595, 842]);
         const { width, height } = sigPage.getSize();
 
         const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-        // 3. Embed drawn signature PNG
+        // 3. Embed drawn signature PNG/JPG
         const signatureImageBytes = Buffer.from(signatureData.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-        const signatureImage = await pdfDoc.embedPng(signatureImageBytes);
-        const sigDims = signatureImage.scale(0.5);
+        let signatureImage;
+        if (signatureData.includes('image/jpeg') || signatureData.includes('image/jpg')) {
+          signatureImage = await pdfDoc.embedJpg(signatureImageBytes);
+        } else {
+          signatureImage = await pdfDoc.embedPng(signatureImageBytes);
+        }
 
-        // Header Banner
-        sigPage.drawRectangle({
-          x: 40,
-          y: height - 100,
-          width: width - 80,
-          height: 60,
-          color: rgb(0.06, 0.09, 0.16),
-        });
+        const rawDims = signatureImage.scale(1.0);
+        const maxSigW = 160;
+        const maxSigH = 50;
+        const scaleFactor = Math.min(maxSigW / rawDims.width, maxSigH / rawDims.height, 1.0);
+        const sigW = rawDims.width * scaleFactor;
+        const sigH = rawDims.height * scaleFactor;
 
-        sigPage.drawText('VELRONA GROUP - DIGITAL SIGNATURE CERTIFICATE', {
-          x: 60,
-          y: height - 65,
-          size: 12,
-          font: helveticaBold,
-          color: rgb(1, 1, 1),
-        });
+        // Position Signature Box on the Bottom-Right of the Last Page dynamically
+        const companyTitle = "For VELRONA TECHNOLOGIES PRIVATE LIMITED";
+        const companyTitleSize = 9;
+        const companyTitleWidth = helveticaBold.widthOfTextAtSize(companyTitle, companyTitleSize);
 
-        sigPage.drawText('Official Investor Verification Document', {
-          x: 60,
-          y: height - 85,
-          size: 10,
-          font: helvetica,
-          color: rgb(0.8, 0.85, 0.9),
-        });
+        const rightMargin = 30;
+        const boxWidth = Math.max(240, companyTitleWidth + 10);
+        const startX = Math.max(20, width - rightMargin - boxWidth); // Responsive right-aligned positioning
+        const startY = 45; // 45pt from the bottom of the page
 
-        // Details Container Box
-        const cardY = height - 380;
-        sigPage.drawRectangle({
-          x: 40,
-          y: cardY,
-          width: width - 80,
-          height: 250,
-          color: rgb(0.97, 0.98, 0.99),
-          borderColor: rgb(0.85, 0.88, 0.92),
-          borderWidth: 1.5,
-        });
-
-        // Certificate Information Rows
-        sigPage.drawText(`Document Title: ${doc.title}`, {
-          x: 65,
-          y: cardY + 215,
-          size: 12,
+        // 1. Company Header Title
+        const titleX = startX + (boxWidth - companyTitleWidth) / 2;
+        sigPage.drawText(companyTitle, {
+          x: titleX,
+          y: startY + 120,
+          size: companyTitleSize,
           font: helveticaBold,
           color: rgb(0.06, 0.09, 0.16),
         });
 
-        sigPage.drawText(`Signatory Name: ${fullName}`, {
-          x: 65,
-          y: cardY + 185,
-          size: 11,
+        // 2. Draw Signature Image (Centered in signature block)
+        const sigImgX = startX + (boxWidth - sigW) / 2;
+        sigPage.drawImage(signatureImage, {
+          x: sigImgX,
+          y: startY + 60,
+          width: sigW,
+          height: sigH,
+        });
+
+        // 3. Signatory Name
+        const nameText = fullName.toUpperCase();
+        const nameSize = 9;
+        const nameWidth = helveticaBold.widthOfTextAtSize(nameText, nameSize);
+        sigPage.drawText(nameText, {
+          x: startX + (boxWidth - nameWidth) / 2,
+          y: startY + 44,
+          size: nameSize,
           font: helveticaBold,
           color: rgb(0.1, 0.15, 0.25),
         });
 
-        sigPage.drawText(`Signatory Email: ${email}`, {
-          x: 65,
-          y: cardY + 160,
-          size: 10,
-          font: helvetica,
-          color: rgb(0.3, 0.35, 0.4),
-        });
-
-        sigPage.drawText(`Date Signed: ${dateSigned || new Date().toLocaleDateString('en-GB')}`, {
-          x: 65,
-          y: cardY + 135,
-          size: 10,
-          font: helvetica,
-          color: rgb(0.3, 0.35, 0.4),
-        });
-
-        sigPage.drawText('Status: VERIFIED & LEGALLY BINDING DIGITAL SIGNATURE', {
-          x: 65,
-          y: cardY + 105,
-          size: 10,
+        // 4. Authorised Signatory subtitle (Removed "Director / ")
+        const subtitleText = "Authorised Signatory";
+        const subtitleSize = 8.5;
+        const subtitleWidth = helveticaBold.widthOfTextAtSize(subtitleText, subtitleSize);
+        sigPage.drawText(subtitleText, {
+          x: startX + (boxWidth - subtitleWidth) / 2,
+          y: startY + 30,
+          size: subtitleSize,
           font: helveticaBold,
-          color: rgb(0.05, 0.6, 0.3),
+          color: rgb(0.2, 0.25, 0.3),
         });
 
-        // Draw Drawn Signature PNG Box
-        sigPage.drawText('Investor Signature:', {
-          x: 65,
-          y: cardY + 70,
-          size: 10,
-          font: helveticaBold,
-          color: rgb(0.3, 0.35, 0.4),
-        });
-
-        sigPage.drawImage(signatureImage, {
-          x: 180,
-          y: cardY + 20,
-          width: Math.min(sigDims.width, 220),
-          height: Math.min(sigDims.height, 70),
+        // 5. Digital Verification details & Date
+        const dateStr = dateSigned || new Date().toLocaleDateString('en-GB');
+        const metaText = `Signed: ${dateStr} • ${email}`;
+        let metaSize = 7;
+        let metaWidth = helvetica.widthOfTextAtSize(metaText, metaSize);
+        if (metaWidth > boxWidth) {
+          metaSize = Math.min(7, (boxWidth / metaWidth) * 6.5);
+          metaWidth = helvetica.widthOfTextAtSize(metaText, metaSize);
+        }
+        sigPage.drawText(metaText, {
+          x: Math.max(20, startX + (boxWidth - metaWidth) / 2),
+          y: startY + 16,
+          size: metaSize,
+          font: helvetica,
+          color: rgb(0.4, 0.45, 0.5),
         });
 
         // 5. Save stamped PDF
