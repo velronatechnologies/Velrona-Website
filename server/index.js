@@ -412,7 +412,7 @@ app.post('/api/signature-submissions', async (req, res) => {
       if (pdfBytes) {
         // 2. Load PDF with pdf-lib & stamp signature block on the LAST PAGE (bottom-right)
         const pdfDoc = await PDFDocument.load(pdfBytes);
-        
+
         // Target the last page of the document instead of creating a separate page
         const pages = pdfDoc.getPages();
         const sigPage = pages.length > 0 ? pages[pages.length - 1] : pdfDoc.addPage([595, 842]);
@@ -438,21 +438,40 @@ app.post('/api/signature-submissions', async (req, res) => {
         const sigH = rawDims.height * scaleFactor;
 
         // Position Signature Box on the Bottom-Right of the Last Page dynamically
-        const companyTitle = "For VELRONA TECHNOLOGIES PRIVATE LIMITED";
-        const companyTitleSize = 9;
-        const companyTitleWidth = helveticaBold.widthOfTextAtSize(companyTitle, companyTitleSize);
+        const headerText = "Signatory";
+        const headerSize = 9.5;
+        const headerWidth = helveticaBold.widthOfTextAtSize(headerText, headerSize);
 
+        const nameText = fullName.toUpperCase();
+        const nameSize = 9;
+        const nameWidth = helveticaBold.widthOfTextAtSize(nameText, nameSize);
+
+        const subtitleText = "Authorised Signatory";
+        const subtitleSize = 8.5;
+        const subtitleWidth = helveticaBold.widthOfTextAtSize(subtitleText, subtitleSize);
+
+        const dateStr = dateSigned || new Date().toLocaleDateString('en-GB');
+        const metaText = `Signed: ${dateStr} • ${email}`;
+        let metaSize = 7;
+        let metaWidth = helvetica.widthOfTextAtSize(metaText, metaSize);
+
+        const maxContentWidth = Math.max(headerWidth, sigW, nameWidth, subtitleWidth, metaWidth);
         const rightMargin = 30;
-        const boxWidth = Math.max(240, companyTitleWidth + 10);
+        const boxWidth = Math.min(width - 40, Math.max(220, maxContentWidth + 20));
         const startX = Math.max(20, width - rightMargin - boxWidth); // Responsive right-aligned positioning
         const startY = 45; // 45pt from the bottom of the page
 
-        // 1. Company Header Title
-        const titleX = startX + (boxWidth - companyTitleWidth) / 2;
-        sigPage.drawText(companyTitle, {
+        if (metaWidth > boxWidth - 10) {
+          metaSize = Math.min(7, ((boxWidth - 10) / metaWidth) * 6.5);
+          metaWidth = helvetica.widthOfTextAtSize(metaText, metaSize);
+        }
+
+        // 1. Header Title ("Signatory")
+        const titleX = startX + (boxWidth - headerWidth) / 2;
+        sigPage.drawText(headerText, {
           x: titleX,
           y: startY + 120,
-          size: companyTitleSize,
+          size: headerSize,
           font: helveticaBold,
           color: rgb(0.06, 0.09, 0.16),
         });
@@ -467,9 +486,6 @@ app.post('/api/signature-submissions', async (req, res) => {
         });
 
         // 3. Signatory Name
-        const nameText = fullName.toUpperCase();
-        const nameSize = 9;
-        const nameWidth = helveticaBold.widthOfTextAtSize(nameText, nameSize);
         sigPage.drawText(nameText, {
           x: startX + (boxWidth - nameWidth) / 2,
           y: startY + 44,
@@ -478,10 +494,7 @@ app.post('/api/signature-submissions', async (req, res) => {
           color: rgb(0.1, 0.15, 0.25),
         });
 
-        // 4. Authorised Signatory subtitle (Removed "Director / ")
-        const subtitleText = "Authorised Signatory";
-        const subtitleSize = 8.5;
-        const subtitleWidth = helveticaBold.widthOfTextAtSize(subtitleText, subtitleSize);
+        // 4. Authorised Signatory subtitle
         sigPage.drawText(subtitleText, {
           x: startX + (boxWidth - subtitleWidth) / 2,
           y: startY + 30,
@@ -491,14 +504,6 @@ app.post('/api/signature-submissions', async (req, res) => {
         });
 
         // 5. Digital Verification details & Date
-        const dateStr = dateSigned || new Date().toLocaleDateString('en-GB');
-        const metaText = `Signed: ${dateStr} • ${email}`;
-        let metaSize = 7;
-        let metaWidth = helvetica.widthOfTextAtSize(metaText, metaSize);
-        if (metaWidth > boxWidth) {
-          metaSize = Math.min(7, (boxWidth / metaWidth) * 6.5);
-          metaWidth = helvetica.widthOfTextAtSize(metaText, metaSize);
-        }
         sigPage.drawText(metaText, {
           x: Math.max(20, startX + (boxWidth - metaWidth) / 2),
           y: startY + 16,
